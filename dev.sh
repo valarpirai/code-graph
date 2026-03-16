@@ -49,6 +49,10 @@ FRONTEND_PID_FILE="$LOG_DIR/frontend.pid"
 BACKEND_LOG="$LOG_DIR/backend.log"
 FRONTEND_LOG="$LOG_DIR/frontend.log"
 
+# Resolve absolute paths to tools now (before any subshells lose PATH context)
+UV="$(command -v uv 2>/dev/null || true)"
+NPM="$(command -v npm 2>/dev/null || true)"
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 is_running() {
@@ -80,13 +84,15 @@ stop_service() {
 check_prereqs() {
   local ok=true
 
-  if ! command -v uv &>/dev/null; then
+  if [[ -z "$UV" ]]; then
     red "  ✗ uv not found — install from https://docs.astral.sh/uv/"
     ok=false
   fi
 
   # Try to switch to Node 22 via nvm before checking
   _ensure_node22
+  # Re-resolve npm after nvm may have changed the active node version
+  NPM="$(command -v npm 2>/dev/null || true)"
 
   if ! command -v node &>/dev/null; then
     red "  ✗ node not found — install Node 22 via nvm: nvm install 22 && nvm use 22"
@@ -100,7 +106,7 @@ check_prereqs() {
     fi
   fi
 
-  if ! command -v npm &>/dev/null; then
+  if [[ -z "$NPM" ]]; then
     red "  ✗ npm not found"
     ok=false
   fi
@@ -119,7 +125,7 @@ start_backend() {
   bold "  Starting backend…"
 
   # Ensure deps are installed
-  (cd "$BACKEND_DIR" && uv sync)
+  (cd "$BACKEND_DIR" && "$UV" sync)
 
   # Create data dir
   mkdir -p "$REPO_ROOT/data"
@@ -129,7 +135,7 @@ start_backend() {
     cd "$BACKEND_DIR"
     DATA_DIR="$REPO_ROOT/data" \
     CORS_ORIGINS="http://localhost:5173" \
-    uv run uvicorn app.main:app \
+    "$UV" run uvicorn app.main:app \
       --host 0.0.0.0 \
       --port 8000 \
       --reload \
@@ -161,15 +167,15 @@ start_frontend() {
 
   bold "  Starting frontend…"
 
-  # Install deps if node_modules is missing or package.json is newer
+  # Install deps if node_modules is missing
   if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
-    (cd "$FRONTEND_DIR" && npm install --silent)
+    (cd "$FRONTEND_DIR" && "$NPM" install --silent)
   fi
 
   (
     cd "$FRONTEND_DIR"
     VITE_API_BASE_URL="http://localhost:8000" \
-    npm run dev -- --port 5173 \
+    "$NPM" run dev -- --port 5173 \
       >> "$FRONTEND_LOG" 2>&1 &
     echo $! > "$FRONTEND_PID_FILE"
   )
