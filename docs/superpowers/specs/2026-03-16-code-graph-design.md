@@ -145,93 +145,51 @@ Manual only — triggered via UI button. Re-runs full parse pipeline, overwrites
 
 ## OWL Ontology
 
-Stored as `backend/ontology.ttl` (shipped with the app). Mounted as a read-only file in Docker. Loaded into rdflib at startup alongside each project graph. `owlrl` is used only for OWL class hierarchy reasoning — **not** for transitive call graph traversal (handled by networkx, see Analysis section).
+Stored as `backend/ontology.ttl` (shipped with the app). Namespace: `http://codegraph.dev/ontology#` (prefix `cg:`). Loaded into rdflib at startup alongside each project graph.
 
-```turtle
-@prefix owl:  <http://www.w3.org/2002/07/owl#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
-@prefix cg:   <http://codegraph.io/ontology#> .
+**Important:** rdflib's SPARQL engine does not perform OWL subclass inference. All SPARQL queries that match TypeDefinition, Callable, or StorageNode subtypes must enumerate them explicitly via `VALUES` clauses.
 
-# ── Classes ──────────────────────────────────────────
-cg:File        a owl:Class .
-cg:Function    a owl:Class .
-cg:Class       a owl:Class .
-cg:Interface   a owl:Class .
-cg:Module      a owl:Class .   # named module/package (e.g. com.example.auth)
-cg:Variable    a owl:Class .   # local variables
-cg:Field       a owl:Class .   # class/struct fields
-cg:Parameter   a owl:Class .   # function parameters
-cg:Constant    a owl:Class .   # const / final / static final
-cg:ExternalSymbol a owl:Class . # unresolved callee outside the repo
-cg:ConfigValue    a owl:Class . # parsed toolchain config entry (tsconfig paths, go.mod module, etc.)
+### Class Hierarchy
 
-# ── Object Properties ────────────────────────────────
-cg:calls       a owl:ObjectProperty ;
-               rdfs:domain cg:Function .
-               # range is owl:Thing — callees may be cg:Function or cg:ExternalSymbol
+```
+cg:TypeDefinition  (abstract)
+  ├─ cg:Class           regular class
+  │    ├─ cg:AbstractClass
+  │    └─ cg:DataClass   (Java record, Kotlin data class, Python @dataclass)
+  ├─ cg:Interface        (Java/TS/Go interface, Python Protocol)
+  ├─ cg:Trait            (Rust trait)
+  ├─ cg:Enum             (all languages)
+  ├─ cg:Struct           (Rust/Go struct, C struct/union)
+  └─ cg:Mixin            (Ruby module used as mixin)
 
-cg:imports     a owl:ObjectProperty ;
-               rdfs:domain cg:File .
-               # range is owl:Thing — import target may be cg:Module or cg:File
+cg:Callable  (abstract)
+  ├─ cg:Function         standalone function
+  └─ cg:Method           owned by TypeDefinition
+       └─ cg:Constructor
 
-cg:inherits    a owl:ObjectProperty ;
-               rdfs:domain cg:Class ;
-               rdfs:range  cg:Class .
+cg:StorageNode  (abstract)
+  ├─ cg:Field            class/struct member
+  ├─ cg:Parameter        function argument
+  ├─ cg:LocalVariable    function-scoped
+  └─ cg:Constant         immutable binding
 
-cg:implements  a owl:ObjectProperty ;
-               rdfs:domain cg:Class ;
-               rdfs:range  cg:Interface .
-
-cg:contains    a owl:ObjectProperty ;
-               rdfs:comment "Parent-child containment: Module→File, File→Class/Function, Class→Function/Field" .
-
-cg:definedIn   a owl:ObjectProperty ;
-               rdfs:range  cg:File .
-
-cg:hasField    a owl:ObjectProperty ;
-               rdfs:domain cg:Class ;
-               rdfs:range  cg:Field .
-
-cg:hasParameter a owl:ObjectProperty ;
-               rdfs:domain cg:Function ;
-               rdfs:range  cg:Parameter .
-
-cg:hasVariable a owl:ObjectProperty ;
-               rdfs:domain cg:Function ;
-               rdfs:range  cg:Variable .
-
-cg:hasConstant a owl:ObjectProperty ;
-               rdfs:domain cg:File ;    # constants live at file/module scope
-               rdfs:range  cg:Constant .
-
-cg:referencedBy a owl:ObjectProperty .  # Variable/Field → Function that reads it
-cg:assignedIn   a owl:ObjectProperty .  # Variable/Field → Function that writes it
-cg:mixes        a owl:ObjectProperty .  # Class → Module/Mixin (Ruby include/extend, Kotlin delegation)
-cg:hasConfig    a owl:ObjectProperty .  # Project root → ConfigValue nodes
-
-# ── Data Properties ──────────────────────────────────
-cg:lineNumber        a owl:DatatypeProperty ; rdfs:range xsd:integer .
-cg:columnNumber      a owl:DatatypeProperty ; rdfs:range xsd:integer .
-cg:filePath          a owl:DatatypeProperty .
-cg:language          a owl:DatatypeProperty .
-cg:dataType          a owl:DatatypeProperty .  # declared type of variable/param/field
-cg:isNullable        a owl:DatatypeProperty ; rdfs:range xsd:boolean .
-cg:isMutable         a owl:DatatypeProperty ; rdfs:range xsd:boolean .
-cg:defaultValue      a owl:DatatypeProperty .
-cg:visibility        a owl:DatatypeProperty .  # public, private, protected
-cg:isExternal        a owl:DatatypeProperty ; rdfs:range xsd:boolean .  # true for ExternalSymbol nodes
-cg:isExported        a owl:DatatypeProperty ; rdfs:range xsd:boolean .  # exported/public symbol
-cg:alias             a owl:DatatypeProperty .  # import alias: "import { X as Y }" → Y
-cg:receiverType      a owl:DatatypeProperty .  # inferred receiver URI at a call site
-cg:frameworkRole     a owl:DatatypeProperty .  # "rest_endpoint", "test", "orm_model", etc.
-cg:entryPointScore   a owl:DatatypeProperty ; rdfs:range xsd:float .  # 0.0–1.0
+Infrastructure: cg:File, cg:Module, cg:Import, cg:ExternalSymbol, cg:ConfigValue
 ```
 
-### Node URI scheme
-`<project://{project-id}/{file-path}#{ClassName.methodName}>`
+### Object Properties
 
-External/unresolved symbols: `<project://{project-id}/external#{qualified-name}>`
+`cg:calls`, `cg:imports`, `cg:inherits`, `cg:implements`, `cg:mixes`, `cg:defines`, `cg:hasField`, `cg:hasMethod`, `cg:hasParameter`, `cg:containsFile`, `cg:containsClass`, `cg:contains`, `cg:dependsOn`
+
+### Datatype Properties
+
+`cg:name`, `cg:qualifiedName`, `cg:filePath`, `cg:language`, `cg:line`, `cg:column`, `cg:visibility`, `cg:isExported`, `cg:frameworkRole`, `cg:entryPointScore`, `cg:dataType`, `cg:returnType`, `cg:classKind`, `cg:value`, `cg:isTest`, `cg:isAbstract`, `cg:lineCount`, `cg:fileSize`
+
+### Node URI scheme
+`http://codegraph.dev/node/{project-id}/{kind}/{qualified-name}`
+
+Kinds: `file`, `class`, `function`, `field`, `parameter`, `storage`, `import`, `module`, `external`
+
+**Breaking change note:** Re-indexing required after ontology changes — existing `graph.ttl` files use old URI scheme and rdf:type values.
 
 ---
 
@@ -366,14 +324,14 @@ All error responses: `{"error": "<error_code>", "message": "<human-readable>"}` 
 
 ### Views
 **Force-directed view**
-- Nodes colored/shaped by type (File, Class, Function, Variable, ExternalSymbol, etc.)
-- Edges colored by relation type (calls, imports, inherits, etc.)
+- Nodes colored by type: 17 distinct node types across 4 families (TypeDefinitions, Callables, StorageNodes, Infrastructure) — each with its own color; Interface/Trait have dashed borders
+- Edges colored by relation type (calls, imports, inherits, implements, mixes, hasMethod, hasField, hasParameter, etc.)
 - Side panel on node click: name, type, file, line/column number, properties, connections
 - Blast radius button → highlights affected subgraph in red
 - Execution flow button → animates call chain path
 
 **Hierarchical view**
-- Tree: Module → File → Class → Function → Variable (via `cg:contains`)
+- Tree: Module → File → Class/Interface/Enum/… → Method/Constructor/Function → Field/Parameter (via `cg:containsFile`, `cg:containsClass`, `cg:defines`)
 - Collapse/expand nodes
 - Linked selection with force-directed view
 
@@ -388,7 +346,7 @@ All error responses: `{"error": "<error_code>", "message": "<human-readable>"}` 
 
 ### Other UI Elements
 - Search bar — client-side filter over already-loaded graph data (no server round-trip); filters visible nodes in Cytoscape by name substring match
-- Filter panel — show/hide node types, languages, clusters, external symbols
+- Filter panel — grouped by node family (Type Definitions / Callables / Storage / Other); show/hide by node type, edge relation, method visibility; cluster overlay; test file toggle
 - Cluster color overlay
 - Index status bar with WebSocket progress
 - Re-index button

@@ -143,9 +143,23 @@ components/
 
 ### Ontology — `backend/ontology.ttl`
 
-OWL ontology with 7 classes (`cg:File`, `cg:Class`, `cg:Function`, `cg:Import`, `cg:Constant`, `cg:ConfigValue`, `cg:ExternalSymbol`), object properties (`cg:calls`, `cg:imports`, `cg:inherits`, `cg:implements`, `cg:hasField`, `cg:hasMethod`, …), and datatype properties (`cg:name`, `cg:filePath`, `cg:language`, `cg:line`, `cg:frameworkRole`, `cg:entryPointScore`, …).
+Full OWL subclass hierarchy (rdflib SPARQL has no subclass inference — queries must enumerate subtypes via `VALUES` clauses):
 
-**Note:** The RDF builder does not currently emit `cg:Module` nodes — wiki module pages will be empty unless parsers are updated to group files into module nodes.
+```
+cg:TypeDefinition  (abstract)
+  ├─ cg:Class, cg:AbstractClass, cg:DataClass
+  ├─ cg:Interface, cg:Trait, cg:Enum, cg:Struct, cg:Mixin
+cg:Callable  (abstract)
+  ├─ cg:Function, cg:Method, cg:Constructor
+cg:StorageNode  (abstract)
+  ├─ cg:Field, cg:Parameter, cg:LocalVariable, cg:Constant
+Infrastructure: cg:File, cg:Module, cg:Import, cg:ExternalSymbol
+```
+
+Object properties: `cg:calls`, `cg:imports`, `cg:inherits`, `cg:implements`, `cg:mixes`, `cg:hasField`, `cg:hasMethod`, `cg:hasParameter`, `cg:defines`, `cg:containsFile`, `cg:containsClass`.
+Datatype properties: `cg:name`, `cg:qualifiedName`, `cg:filePath`, `cg:language`, `cg:line`, `cg:visibility`, `cg:isExported`, `cg:frameworkRole`, `cg:entryPointScore`, `cg:dataType`, `cg:returnType`, `cg:classKind`, `cg:value`, `cg:isTest`, `cg:isAbstract`, `cg:lineCount`, `cg:fileSize`.
+
+**Breaking change:** Existing `graph.ttl` files must be re-indexed after the hierarchy change (node URIs changed from `variable/` to `storage/`, rdf:type changed for all subtypes).
 
 ---
 
