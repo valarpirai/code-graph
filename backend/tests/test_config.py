@@ -1,4 +1,3 @@
-import os
 from app.config import Settings
 
 def test_default_data_dir():
@@ -14,3 +13,9 @@ def test_data_dir_override(monkeypatch):
     monkeypatch.setenv("DATA_DIR", "/tmp/test-data")
     s = Settings()
     assert s.data_dir == "/tmp/test-data"
+
+def test_get_settings_returns_same_instance():
+    from app.config import get_settings
+    s1 = get_settings()
+    s2 = get_settings()
+    assert s1 is s2  # LRU cache returns same object
