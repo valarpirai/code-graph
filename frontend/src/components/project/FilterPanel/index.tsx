@@ -96,10 +96,16 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
     next.has(t) ? next.delete(t) : next.add(t);
     onChange({ ...filters, visibleNodeTypes: next });
   };
+  const onlyNodeType = (t: NodeType) => {
+    onChange({ ...filters, visibleNodeTypes: new Set([t]) });
+  };
   const toggleEdge = (r: EdgeRelation) => {
     const next = new Set(filters.visibleEdgeRelations);
     next.has(r) ? next.delete(r) : next.add(r);
     onChange({ ...filters, visibleEdgeRelations: next });
+  };
+  const onlyEdgeRelation = (r: EdgeRelation) => {
+    onChange({ ...filters, visibleEdgeRelations: new Set([r]) });
   };
   const toggleVisibility = (v: string) => {
     const next = new Set(filters.hiddenVisibilities);
@@ -144,6 +150,7 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
         counts={nodeTypeCounts}
         visible={filters.visibleNodeTypes}
         onToggle={toggleNodeType}
+        onOnly={onlyNodeType}
       />
       <NodeTypeSection
         label="Callables"
@@ -151,6 +158,7 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
         counts={nodeTypeCounts}
         visible={filters.visibleNodeTypes}
         onToggle={toggleNodeType}
+        onOnly={onlyNodeType}
       />
       <NodeTypeSection
         label="Storage"
@@ -158,6 +166,7 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
         counts={nodeTypeCounts}
         visible={filters.visibleNodeTypes}
         onToggle={toggleNodeType}
+        onOnly={onlyNodeType}
       />
       <NodeTypeSection
         label="Other"
@@ -165,6 +174,7 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
         counts={nodeTypeCounts}
         visible={filters.visibleNodeTypes}
         onToggle={toggleNodeType}
+        onOnly={onlyNodeType}
       />
 
       <Section label="Edge Relations">
@@ -176,6 +186,7 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
             count={edgeRelationCounts.get(r)}
             checked={filters.visibleEdgeRelations.has(r)}
             onChange={() => toggleEdge(r)}
+            onOnly={() => onlyEdgeRelation(r)}
           />
         ))}
       </Section>
@@ -204,9 +215,10 @@ interface NodeTypeSectionProps {
   counts: Map<NodeType, number>;
   visible: Set<NodeType>;
   onToggle: (t: NodeType) => void;
+  onOnly: (t: NodeType) => void;
 }
 
-function NodeTypeSection({ label, types, counts, visible, onToggle }: NodeTypeSectionProps) {
+function NodeTypeSection({ label, types, counts, visible, onToggle, onOnly }: NodeTypeSectionProps) {
   // Only show types that exist in the graph (when data is loaded)
   const available = counts.size > 0 ? types.filter((t) => counts.has(t)) : types;
   if (available.length === 0) return null;
@@ -220,6 +232,7 @@ function NodeTypeSection({ label, types, counts, visible, onToggle }: NodeTypeSe
           count={counts.get(t)}
           checked={visible.has(t)}
           onChange={() => onToggle(t)}
+          onOnly={() => onOnly(t)}
         />
       ))}
     </Section>
@@ -236,18 +249,34 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 function CheckRow({
-  label, color, count, checked, onChange,
+  label, color, count, checked, onChange, onOnly,
 }: {
-  label: string; color?: string; count?: number; checked: boolean; onChange: () => void;
+  label: string; color?: string; count?: number; checked: boolean;
+  onChange: () => void; onOnly?: () => void;
 }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent-blue shrink-0" />
+    <div className="group flex items-center gap-2 cursor-pointer" onClick={onChange}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        onClick={(e) => e.stopPropagation()}
+        className="accent-accent-blue shrink-0"
+      />
       {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
-      <span className="text-gray-300 truncate flex-1">{label}</span>
-      {count !== undefined && (
-        <span className="text-gray-600 tabular-nums ml-auto shrink-0">{count}</span>
+      <span className="text-gray-300 truncate flex-1 select-none">{label}</span>
+      {onOnly && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onOnly(); }}
+          className="hidden group-hover:inline text-[10px] text-gray-500 hover:text-accent-blue px-1 shrink-0 leading-none"
+          title="Show only this"
+        >
+          only
+        </button>
       )}
-    </label>
+      {count !== undefined && (
+        <span className="text-gray-600 tabular-nums shrink-0 group-hover:hidden">{count}</span>
+      )}
+    </div>
   );
 }
