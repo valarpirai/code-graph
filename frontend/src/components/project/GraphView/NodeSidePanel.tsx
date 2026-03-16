@@ -144,6 +144,11 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
                   key={caller.id}
                   className="text-left text-xs text-gray-300 font-mono hover:text-white hover:underline underline-offset-2 transition-colors truncate"
                   onClick={() => onSelectNode(caller.id)}
+                  title={[
+                    caller.qualified_name ?? caller.label,
+                    caller.file_path ? `File: ${caller.file_path}` : null,
+                    caller.visibility ? `Visibility: ${caller.visibility}` : null,
+                  ].filter(Boolean).join("\n")}
                 >
                   {callerLabel(caller)}
                 </button>
