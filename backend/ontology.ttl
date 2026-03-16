@@ -1,4 +1,103 @@
-@prefix owl:  <http://www.w3.org/2002/07/owl#> .
-@prefix cg:   <http://codegraph.io/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix cg: <http://codegraph.dev/ontology#> .
 
-<http://codegraph.io/ontology> a owl:Ontology .
+<http://codegraph.dev/ontology>
+    a owl:Ontology ;
+    rdfs:label "Code Graph Ontology" .
+
+# ── Classes ──────────────────────────────────────────────────────────────────
+
+cg:File a owl:Class ; rdfs:label "File" .
+cg:Class a owl:Class ; rdfs:label "Class" .
+cg:Function a owl:Class ; rdfs:label "Function" .
+cg:Import a owl:Class ; rdfs:label "Import" .
+cg:Constant a owl:Class ; rdfs:label "Constant" .
+cg:ConfigValue a owl:Class ; rdfs:label "ConfigValue" .
+cg:ExternalSymbol a owl:Class ; rdfs:label "ExternalSymbol" .
+
+# ── Object Properties ────────────────────────────────────────────────────────
+
+cg:defines a owl:ObjectProperty ;
+    rdfs:domain cg:File ;
+    rdfs:range owl:Thing ;
+    rdfs:label "defines" .
+
+cg:calls a owl:ObjectProperty ;
+    rdfs:domain cg:Function ;
+    rdfs:range owl:Thing ;
+    rdfs:label "calls" .
+
+cg:imports a owl:ObjectProperty ;
+    rdfs:domain cg:File ;
+    rdfs:range cg:Import ;
+    rdfs:label "imports" .
+
+cg:inherits a owl:ObjectProperty ;
+    rdfs:domain cg:Class ;
+    rdfs:range cg:Class ;
+    rdfs:label "inherits" .
+
+cg:implements a owl:ObjectProperty ;
+    rdfs:domain cg:Class ;
+    rdfs:range cg:Class ;
+    rdfs:label "implements" .
+
+cg:hasField a owl:ObjectProperty ;
+    rdfs:domain cg:Class ;
+    rdfs:range owl:Thing ;
+    rdfs:label "hasField" .
+
+cg:hasMethod a owl:ObjectProperty ;
+    rdfs:domain cg:Class ;
+    rdfs:range cg:Function ;
+    rdfs:label "hasMethod" .
+
+cg:dependsOn a owl:ObjectProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range owl:Thing ;
+    rdfs:label "dependsOn" .
+
+# ── Datatype Properties ──────────────────────────────────────────────────────
+
+cg:name a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "name" .
+
+cg:qualifiedName a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "qualifiedName" .
+
+cg:language a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "language" .
+
+cg:filePath a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "filePath" .
+
+cg:line a owl:DatatypeProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "line" .
+
+cg:column a owl:DatatypeProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "column" .
+
+cg:visibility a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "visibility" .
+
+cg:isExported a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "isExported" .
+
+cg:frameworkRole a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "frameworkRole" .
+
+cg:entryPointScore a owl:DatatypeProperty ;
+    rdfs:range xsd:float ;
+    rdfs:label "entryPointScore" .
