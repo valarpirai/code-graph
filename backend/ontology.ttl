@@ -15,6 +15,8 @@ cg:Class a owl:Class ; rdfs:label "Class" .
 cg:Function a owl:Class ; rdfs:label "Function" .
 cg:Import a owl:Class ; rdfs:label "Import" .
 cg:Constant a owl:Class ; rdfs:label "Constant" .
+cg:Variable a owl:Class ; rdfs:label "Variable" .
+cg:Module a owl:Class ; rdfs:label "Module" .
 cg:ConfigValue a owl:Class ; rdfs:label "ConfigValue" .
 cg:ExternalSymbol a owl:Class ; rdfs:label "ExternalSymbol" .
 
@@ -54,6 +56,11 @@ cg:hasMethod a owl:ObjectProperty ;
     rdfs:domain cg:Class ;
     rdfs:range cg:Function ;
     rdfs:label "hasMethod" .
+
+cg:contains a owl:ObjectProperty ;
+    rdfs:domain cg:Module ;
+    rdfs:range cg:File ;
+    rdfs:label "contains" .
 
 cg:dependsOn a owl:ObjectProperty ;
     rdfs:domain owl:Thing ;
@@ -101,3 +108,11 @@ cg:frameworkRole a owl:DatatypeProperty ;
 cg:entryPointScore a owl:DatatypeProperty ;
     rdfs:range xsd:float ;
     rdfs:label "entryPointScore" .
+
+cg:value a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "value" .
+
+cg:classKind a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "classKind" .

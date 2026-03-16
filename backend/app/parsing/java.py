@@ -32,6 +32,7 @@ class JavaParser(BaseParser):
             file_path=file_path, language="java",
             classes=classes, functions=functions,
             imports=imports, constants=constants, config_values=[],
+            package=package,
         )
 
     def _extract_package(self, root) -> str:
@@ -44,6 +45,7 @@ class JavaParser(BaseParser):
 
     def _extract_classes(self, root, package: str) -> list[ClassDef]:
         classes = []
+        # class_declaration covers regular, abstract, and final classes
         for node in self._walk(root, "class_declaration"):
             name = self._child_text(node, "identifier")
             qname = f"{package}.{name}" if package else name
@@ -54,6 +56,12 @@ class JavaParser(BaseParser):
             interfaces = self._extract_interface_list(node)
             fields = self._extract_fields(node)
             methods = self._extract_methods(node, qname)
+            if "abstract" in modifiers:
+                kind = "abstract_class"
+            elif "final" in modifiers:
+                kind = "final_class"
+            else:
+                kind = "class"
             classes.append(ClassDef(
                 name=name, qualified_name=qname,
                 line=node.start_point[0] + 1,
@@ -61,8 +69,35 @@ class JavaParser(BaseParser):
                 implements=interfaces,
                 fields=fields, methods=methods,
                 is_exported="public" in modifiers,
+                class_kind=kind,
+            ))
+        # interface_declaration
+        for node in self._walk(root, "interface_declaration"):
+            name = self._child_text(node, "identifier")
+            qname = f"{package}.{name}" if package else name
+            modifiers = self._get_modifiers(node)
+            methods = self._extract_methods(node, qname)
+            # interfaces can extend other interfaces
+            extends = self._extract_extends_interfaces(node)
+            classes.append(ClassDef(
+                name=name, qualified_name=qname,
+                line=node.start_point[0] + 1,
+                inherits=extends,
+                implements=[],
+                fields=[], methods=methods,
+                is_exported="public" in modifiers,
+                class_kind="interface",
             ))
         return classes
+
+    def _extract_extends_interfaces(self, interface_node) -> list[str]:
+        """Extract interfaces that an interface extends."""
+        result = []
+        extends = self._find_child(interface_node, "extends_interfaces")
+        if extends:
+            for child in self._walk(extends, "type_identifier"):
+                result.append(child.text.decode())
+        return result
 
     def _extract_methods(self, class_node, class_qname: str) -> list[FunctionDef]:
         methods = []

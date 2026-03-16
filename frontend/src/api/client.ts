@@ -1,6 +1,5 @@
 import type {
   Project,
-  ProjectList,
   GraphResponse,
   ClustersResponse,
   SubgraphResponse,
@@ -31,7 +30,7 @@ async function apiFetch<T>(
 // ── Projects ──────────────────────────────────────────────────────────────────
 
 export const listProjects = () =>
-  apiFetch<ProjectList>("/api/v1/projects");
+  apiFetch<Project[]>("/api/v1/projects");
 
 export const getProject = (id: string) =>
   apiFetch<Project>(`/api/v1/projects/${id}`);

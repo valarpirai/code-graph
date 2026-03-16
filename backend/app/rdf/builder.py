@@ -1,7 +1,7 @@
 from rdflib import Graph, URIRef, Literal, RDF, XSD
 from urllib.parse import quote
 from .ontology import CG, load_ontology
-from ..parsing.base import ParsedFile, FunctionDef, ClassDef, ImportDef
+from ..parsing.base import ParsedFile, FunctionDef, ClassDef, ImportDef, ConstantDef
 
 
 def _uri(project_id: str, kind: str, qname: str) -> URIRef:
@@ -11,17 +11,31 @@ def _uri(project_id: str, kind: str, qname: str) -> URIRef:
 class RDFBuilder:
     def build(self, project_id: str, parsed_files: list[ParsedFile]) -> Graph:
         g = load_ontology()
+        # Create Package/Module nodes first (one per unique package)
+        package_uris: dict[str, URIRef] = {}
+        for pf in parsed_files:
+            if pf.package and pf.package not in package_uris:
+                pkg_uri = _uri(project_id, "module", pf.package)
+                g.add((pkg_uri, RDF.type, CG.Module))
+                g.add((pkg_uri, CG.name, Literal(pf.package)))
+                package_uris[pf.package] = pkg_uri
+
         for pf in parsed_files:
             file_uri = _uri(project_id, "file", pf.file_path)
             g.add((file_uri, RDF.type, CG.File))
             g.add((file_uri, CG.filePath, Literal(pf.file_path)))
             g.add((file_uri, CG.language, Literal(pf.language)))
+            # Connect package → file
+            if pf.package and pf.package in package_uris:
+                g.add((package_uris[pf.package], CG.contains, file_uri))
             for cls in pf.classes:
                 self._add_class(g, project_id, file_uri, cls)
             for fn in pf.functions:
                 self._add_function(g, project_id, file_uri, fn)
             for imp in pf.imports:
                 self._add_import(g, project_id, file_uri, imp)
+            for const in pf.constants:
+                self._add_variable(g, project_id, file_uri, const)
         self._add_call_edges(g, project_id, parsed_files)
         return g
 
@@ -32,6 +46,7 @@ class RDFBuilder:
         g.add((uri, CG.qualifiedName, Literal(cls.qualified_name)))
         g.add((uri, CG.line, Literal(cls.line, datatype=XSD.integer)))
         g.add((uri, CG.isExported, Literal(cls.is_exported, datatype=XSD.boolean)))
+        g.add((uri, CG.classKind, Literal(cls.class_kind)))
         g.add((file_uri, CG.defines, uri))
         for base in cls.inherits:
             g.add((uri, CG.inherits, _uri(project_id, "class", base)))
@@ -55,6 +70,15 @@ class RDFBuilder:
             g.add((owner, CG.hasMethod, uri))
         else:
             g.add((file_uri, CG.defines, uri))
+
+    def _add_variable(self, g, project_id, file_uri, const: ConstantDef):
+        uri = _uri(project_id, "variable", f"{file_uri}/{const.name}")
+        g.add((uri, RDF.type, CG.Variable))
+        g.add((uri, CG.name, Literal(const.name)))
+        g.add((uri, CG.line, Literal(const.line, datatype=XSD.integer)))
+        if const.value is not None:
+            g.add((uri, CG.value, Literal(const.value)))
+        g.add((file_uri, CG.defines, uri))
 
     def _add_import(self, g, project_id, file_uri, imp: ImportDef):
         uri = _uri(project_id, "import", imp.source)

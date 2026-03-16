@@ -6,9 +6,10 @@ import { useGraph, useClusters } from "../../../hooks/useGraph";
 import { baseStylesheet, CLUSTER_PALETTE } from "./cytoscapeConfig";
 import NodeSidePanel from "./NodeSidePanel";
 import MiniMap from "./MiniMap";
-import FilterPanel, { FilterState, defaultFilterState } from "../FilterPanel/index";
+import FilterPanel, { defaultFilterState } from "../FilterPanel/index";
+import type { FilterState } from "../FilterPanel/index";
 import SearchBar from "../../shared/SearchBar";
-import type { GraphNodeData } from "../../../api/types";
+import type { GraphNodeData, GraphResponse } from "../../../api/types";
 import { getBlastRadius, getExecutionFlow } from "../../../api/client";
 
 cytoscape.use(coseBilkent);
@@ -25,7 +26,6 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   const [cy, setCy] = useState<cytoscape.Core | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNodeData | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilterState());
-  const [showFilters, setShowFilters] = useState(false);
 
   const { data: graphData, isLoading, isError } = useGraph(projectId);
   const { data: clusterData } = useClusters(projectId);
@@ -36,7 +36,18 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       container: containerRef.current,
       elements: [...graphData.nodes, ...graphData.edges],
       style: baseStylesheet,
-      layout: { name: "cose-bilkent", animate: false, randomize: true, idealEdgeLength: 80, nodeRepulsion: 4500, padding: 30 } as cytoscape.LayoutOptions,
+      layout: {
+        name: "cose-bilkent",
+        animate: false,
+        randomize: true,
+        idealEdgeLength: 120,
+        nodeRepulsion: 12000,
+        nodeDimensionsIncludeLabels: true,
+        padding: 60,
+        gravity: 0.15,
+        numIter: 2500,
+        tile: true,
+      } as cytoscape.LayoutOptions,
       wheelSensitivity: 0.3,
     });
     instance.on("tap", "node", (evt) => {
@@ -115,19 +126,25 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   if (isError) return <div className="flex-1 flex items-center justify-center text-accent-red text-sm">Failed to load graph.</div>;
 
   return (
-    <div className="flex-1 relative flex overflow-hidden">
-      <div className="absolute top-3 left-3 z-10 flex gap-2">
-        <button onClick={() => setShowFilters((v) => !v)} className="btn-ghost text-xs px-3 py-1.5">Filters</button>
-        <button onClick={() => cy?.fit(undefined, 30)} className="btn-ghost text-xs px-3 py-1.5">Fit</button>
-        <button onClick={() => cy?.elements().removeClass("blast-radius blast-radius-edge execution-flow faded")} className="btn-ghost text-xs px-3 py-1.5">Clear</button>
-        <div className="w-48"><SearchBar onSearch={handleSearch} /></div>
+    <div className="flex-1 flex overflow-hidden">
+      {/* Always-visible filter sidebar */}
+      <div className="w-52 shrink-0 border-r border-surface-border overflow-y-auto">
+        <FilterPanel filters={filters} onChange={setFilters} />
       </div>
-      {showFilters && <div className="absolute top-12 left-3 z-10 w-52"><FilterPanel filters={filters} onChange={setFilters} /></div>}
-      <div ref={containerRef} className="flex-1 bg-surface" />
-      <MiniMap cy={cy} />
-      {selectedNode && (
-        <NodeSidePanel node={selectedNode} onClose={() => setSelectedNode(null)} onBlastRadius={handleBlastRadius} onExecutionFlow={handleExecutionFlow} />
-      )}
+
+      {/* Graph canvas area */}
+      <div className="flex-1 relative flex overflow-hidden">
+        <div className="absolute top-3 left-3 z-10 flex gap-2">
+          <button onClick={() => cy?.fit(undefined, 30)} className="btn-ghost text-xs px-3 py-1.5">Fit</button>
+          <button onClick={() => cy?.elements().removeClass("blast-radius blast-radius-edge execution-flow faded")} className="btn-ghost text-xs px-3 py-1.5">Clear</button>
+          <div className="w-48"><SearchBar onSearch={handleSearch} /></div>
+        </div>
+        <div ref={containerRef} className="flex-1 bg-surface" />
+        <MiniMap cy={cy} />
+        {selectedNode && (
+          <NodeSidePanel node={selectedNode} graphData={graphData ?? { nodes: [], edges: [] }} onClose={() => setSelectedNode(null)} onBlastRadius={handleBlastRadius} onExecutionFlow={handleExecutionFlow} />
+        )}
+      </div>
     </div>
   );
 }

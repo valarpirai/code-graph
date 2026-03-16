@@ -1,9 +1,14 @@
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from rdflib import RDF
+from rdflib.namespace import OWL, RDFS
 from app.rdf.graph_store import load_graph
 from app.rdf.ontology import CG
 from app.config import get_settings
+
+# OWL/RDFS metaclasses — triples where these are the *object* of rdf:type
+# describe ontology structure, not code entities, and must be skipped.
+_OWL_META = {OWL.Class, OWL.ObjectProperty, OWL.DatatypeProperty, OWL.Ontology, RDFS.Class}
 
 router = APIRouter(prefix="/api/v1/projects", tags=["graph"])
 
@@ -22,27 +27,66 @@ def get_graph(project_id: str):
     g = load_graph(project_id, data_dir)
     nodes, edges = [], []
 
+    node_ids: set[str] = set()
     for s, _, o in g.triples((None, RDF.type, None)):
-        label = str(g.value(s, CG.name) or s)
-        node_type = str(o).split("#")[-1]
-        # skip ontology class definitions themselves
-        if node_type in ("Class", "ObjectProperty", "DatatypeProperty", "Ontology"):
+        if o in _OWL_META:
             continue
-        nodes.append({"data": {
-            "id": str(s),
+        raw_label = g.value(s, CG.name)
+        if raw_label:
+            label = str(raw_label)
+        else:
+            # File nodes: show just the filename, not the full path
+            fp = g.value(s, CG.filePath)
+            if fp:
+                label = str(fp).rstrip("/").split("/")[-1]
+            else:
+                label = str(s).rstrip("/").split("/")[-1]
+        node_type = str(o).split("#")[-1]
+        node_id = str(s)
+        node_ids.add(node_id)
+        data: dict = {
+            "id": node_id,
             "label": label,
-            "type": node_type,
-            "language": str(g.value(s, CG.language) or ""),
-            "file": str(g.value(s, CG.filePath) or ""),
-            "line": int(g.value(s, CG.line) or 0),
-        }})
+            "node_type": node_type,
+        }
+        # optional scalar properties — only emit non-empty values
+        def _str(pred):  # noqa: E306
+            v = g.value(s, pred)
+            return str(v) if v is not None else None
+        def _int(pred):  # noqa: E306
+            v = g.value(s, pred)
+            return int(v) if v is not None else None
+        def _float(pred):  # noqa: E306
+            v = g.value(s, pred)
+            return round(float(v), 3) if v is not None else None
+        def _bool(pred):  # noqa: E306
+            v = g.value(s, pred)
+            return bool(v) if v is not None else None
+
+        for key, val in [
+            ("file_path",        _str(CG.filePath)),
+            ("language",         _str(CG.language)),
+            ("line",             _int(CG.line)),
+            ("qualified_name",   _str(CG.qualifiedName)),
+            ("visibility",       _str(CG.visibility)),
+            ("is_exported",      _bool(CG.isExported)),
+            ("entry_point_score", _float(CG.entryPointScore)),
+            ("framework_role",   _str(CG.frameworkRole)),
+            ("value",            _str(CG.value)),
+            ("class_kind",       _str(CG.classKind)),
+        ]:
+            if val is not None and val != "" and val is not False:
+                data[key] = val
+        nodes.append({"data": data})
 
     for s, p, o in g:
-        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod):
-            edges.append({"data": {
-                "source": str(s),
-                "target": str(o),
-                "relation": str(p).split("#")[-1],
-            }})
+        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod, CG.contains):
+            src, tgt = str(s), str(o)
+            if src in node_ids and tgt in node_ids:
+                edges.append({"data": {
+                    "source": src,
+                    "target": tgt,
+                    "relation": str(p).split("#")[-1],
+                }})
 
     return {"nodes": nodes, "edges": edges}

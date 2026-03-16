@@ -17,6 +17,7 @@ export const EDGE_COLORS: Record<EdgeRelation, string> = {
   contains: "#484f58",
   defines: "#bc8cff",
   uses: "#8b949e",
+  hasMethod: "#d29922",
 };
 
 export const CLUSTER_PALETTE = [
@@ -28,19 +29,39 @@ export const baseStylesheet: Stylesheet[] = [
   {
     selector: "node",
     style: {
-      label: "data(label)",
+      label: (ele) => {
+        const raw: string = ele.data("label") ?? "";
+        return raw.length > 24 ? raw.slice(0, 22) + "…" : raw;
+      },
       "font-family": "JetBrains Mono, monospace",
-      "font-size": "10px",
-      color: "#e6edf3",
+      "font-size": "9px",
+      color: "#c9d1d9",
       "text-valign": "bottom",
-      "text-margin-y": 4,
+      "text-margin-y": 5,
+      "text-background-color": "#0d1117",
+      "text-background-opacity": 0.7,
+      "text-background-padding": "2px",
       "background-color": (ele) =>
         NODE_COLORS[ele.data("node_type") as NodeType] ?? "#484f58",
-      "border-width": (ele) =>
-        ele.data("node_type") === "ExternalSymbol" ? 2 : 0,
-      "border-color": "#f85149",
-      width: 18,
-      height: 18,
+      "border-width": (ele) => {
+        if (ele.data("node_type") === "ExternalSymbol") return 2;
+        if (ele.data("class_kind") && ele.data("class_kind") !== "class") return 2;
+        return 0;
+      },
+      "border-color": (ele) => {
+        switch (ele.data("class_kind")) {
+          case "interface":      return "#58a6ff";   // blue
+          case "abstract_class": return "#bc8cff";   // purple
+          case "final_class":    return "#d29922";   // amber
+          default: return "#f85149";
+        }
+      },
+      "border-style": (ele) => {
+        if (ele.data("class_kind") === "interface") return "dashed";
+        return "solid";
+      },
+      width: 22,
+      height: 22,
     },
   },
   {

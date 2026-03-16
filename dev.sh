@@ -134,7 +134,7 @@ start_backend() {
   (
     cd "$BACKEND_DIR"
     export DATA_DIR="$REPO_ROOT/data"
-    export CORS_ORIGINS="http://localhost:5173"
+    export CORS_ORIGINS='["http://localhost:5173"]'
     nohup "$UV" run uvicorn app.main:app \
       --host 0.0.0.0 \
       --port 8000 \

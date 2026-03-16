@@ -11,17 +11,12 @@ export interface Project {
   id: string;
   name: string;
   status: ProjectStatus;
-  source_url?: string;
+  source: string;
   languages: string[];
-  created_at: string;
-  updated_at: string;
+  last_indexed?: string;
   node_count?: number;
   edge_count?: number;
   error_message?: string;
-}
-
-export interface ProjectList {
-  projects: Project[];
 }
 
 // ── Graph ─────────────────────────────────────────────────────────────────────
@@ -40,7 +35,8 @@ export type EdgeRelation =
   | "inherits"
   | "contains"
   | "defines"
-  | "uses";
+  | "uses"
+  | "hasMethod";
 
 export interface GraphNodeData {
   id: string;
@@ -48,8 +44,14 @@ export interface GraphNodeData {
   node_type: NodeType;
   file_path?: string;
   line?: number;
-  col?: number;
   language?: string;
+  qualified_name?: string;
+  visibility?: string;
+  is_exported?: boolean;
+  entry_point_score?: number;
+  framework_role?: string;
+  value?: string;
+  class_kind?: string;
   cluster_id?: string;
   [key: string]: unknown;
 }

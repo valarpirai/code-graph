@@ -55,6 +55,7 @@ class ClassDef:
     fields: list[FieldDef]
     methods: list[FunctionDef]
     is_exported: bool
+    class_kind: str = "class"   # "class" | "abstract_class" | "final_class" | "interface"
 
 
 @dataclass
@@ -74,6 +75,7 @@ class ParsedFile:
     imports: list[ImportDef]
     constants: list[ConstantDef]
     config_values: list[ConfigValue]
+    package: str = ""                  # package / namespace (e.g. "com.example.servlet")
 
 
 class BaseParser(ABC):

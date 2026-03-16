@@ -22,7 +22,7 @@ export default function ProjectList() {
     );
   }
 
-  const projects = data?.projects ?? [];
+  const projects = data ?? [];
 
   if (projects.length === 0) {
     return (
@@ -45,9 +45,9 @@ export default function ProjectList() {
             <span className="text-sm text-gray-200 font-semibold truncate">
               {p.name}
             </span>
-            {p.source_url && (
+            {p.source && (
               <span className="text-xs text-gray-600 truncate">
-                {p.source_url}
+                {p.source}
               </span>
             )}
           </div>
