@@ -130,17 +130,18 @@ start_backend() {
   # Create data dir
   mkdir -p "$REPO_ROOT/data"
 
-  # Start uvicorn in background
+  # Start uvicorn — nohup + disown survive subshell and terminal detach
   (
     cd "$BACKEND_DIR"
-    DATA_DIR="$REPO_ROOT/data" \
-    CORS_ORIGINS="http://localhost:5173" \
-    "$UV" run uvicorn app.main:app \
+    export DATA_DIR="$REPO_ROOT/data"
+    export CORS_ORIGINS="http://localhost:5173"
+    nohup "$UV" run uvicorn app.main:app \
       --host 0.0.0.0 \
       --port 8000 \
       --reload \
       >> "$BACKEND_LOG" 2>&1 &
     echo $! > "$BACKEND_PID_FILE"
+    disown $!
   )
 
   # Wait for it to be ready (up to 30s)
@@ -152,11 +153,24 @@ start_backend() {
       green "  ✓ backend ready at http://localhost:8000"
       return
     fi
+    # Bail early if the process already died
+    if [[ -f "$BACKEND_PID_FILE" ]] && ! kill -0 "$(cat "$BACKEND_PID_FILE")" 2>/dev/null; then
+      echo ""
+      red "  ✗ backend process exited unexpectedly. Last log lines:"
+      echo ""
+      tail -20 "$BACKEND_LOG" | sed 's/^/    /'
+      echo ""
+      return 1
+    fi
     printf "."
     sleep 0.5; (( i++ ))
   done
   echo ""
-  yellow "  ⚠ backend started but /health not yet responding — check $BACKEND_LOG"
+  red "  ✗ backend did not respond within 30s. Last log lines:"
+  echo ""
+  tail -20 "$BACKEND_LOG" | sed 's/^/    /'
+  echo ""
+  return 1
 }
 
 start_frontend() {
@@ -174,10 +188,11 @@ start_frontend() {
 
   (
     cd "$FRONTEND_DIR"
-    VITE_API_BASE_URL="http://localhost:8000" \
-    "$NPM" run dev -- --port 5173 \
+    export VITE_API_BASE_URL="http://localhost:8000"
+    nohup "$NPM" run dev -- --port 5173 \
       >> "$FRONTEND_LOG" 2>&1 &
     echo $! > "$FRONTEND_PID_FILE"
+    disown $!
   )
 
   # Wait for Vite to be ready (up to 30s)
