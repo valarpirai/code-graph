@@ -143,10 +143,13 @@ class RDFBuilder:
         g.add((uri, CG.line, Literal(const.line, datatype=XSD.integer)))
         if const.value is not None:
             g.add((uri, CG.value, Literal(const.value)))
-        # Link to owner: class-scoped → hasField; file-level/local → defines
+        # Link to owner: class-scoped → hasField; local → function hasParameter; file-level → defines
         if const.owner_qname and const.var_kind in ("instance", "static", "constant", "final"):
             owner_uri = _uri(project_id, "class", const.owner_qname)
             g.add((owner_uri, CG.hasField, uri))
+        elif const.owner_qname and const.var_kind == "local":
+            fn_uri = _uri(project_id, "function", const.owner_qname)
+            g.add((fn_uri, CG.defines, uri))
         else:
             g.add((file_uri, CG.defines, uri))
 
@@ -182,5 +185,11 @@ class RDFBuilder:
                     else:
                         callee = _uri(project_id, "external", callee_name)
                         g.add((callee, RDF.type, CG.ExternalSymbol))
-                        g.add((callee, CG.name, Literal(callee_name)))
+                        g.add((callee, CG.qualifiedName, Literal(callee_name)))
+                        if "." in callee_name:
+                            owner, method = callee_name.rsplit(".", 1)
+                            g.add((callee, CG.name, Literal(method)))
+                            g.add((callee, CG.filePath, Literal(owner)))
+                        else:
+                            g.add((callee, CG.name, Literal(callee_name)))
                         g.add((caller, CG.calls, callee))

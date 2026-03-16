@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { GraphNodeData, GraphResponse } from "../../../api/types";
 import { NODE_COLORS } from "./cytoscapeConfig";
 
@@ -60,7 +61,8 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
   const color = NODE_COLORS[node.node_type] ?? "#8b949e";
   const ancestors = computeAncestry(node.id, graphData);
   const moduleStats = node.node_type === "Module" ? computeModuleStats(node.id, graphData) : null;
-  const calledFrom = node.node_type === "Function" ? computeCalledFrom(node.id, graphData) : [];
+  const isCallable = node.node_type === "Function" || node.node_type === "Method" || node.node_type === "Constructor";
+  const calledFrom = isCallable ? computeCalledFrom(node.id, graphData) : [];
 
   return (
     <div className="absolute top-0 right-0 h-full w-80 card border-l border-t-0 border-r-0 border-b-0 rounded-none flex flex-col z-10 overflow-y-auto">
@@ -86,7 +88,8 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
           {node.qualified_name && node.qualified_name !== node.label && (
             <Property label="Qualified Name" value={node.qualified_name} mono />
           )}
-          {node.file_path && <Property label="File" value={node.file_path} mono />}
+          {node.file_path && <Property label={node.node_type === "ExternalSymbol" ? "Module" : "File"} value={node.file_path} mono />}
+          {node.caller_count != null && <Property label="Called By" value={node.caller_count} />}
           {node.line != null && <Property label="Line" value={node.line} />}
           {node.language && <Property label="Language" value={node.language} />}
           {node.visibility && <Property label="Visibility" value={node.visibility} />}
@@ -97,7 +100,7 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
             <Property label="Entry Point Score" value={node.entry_point_score} />
           )}
           {node.framework_role && <Property label="Framework Role" value={node.framework_role} />}
-          {node.var_kind && <Property label="Variable Kind" value={node.var_kind} />}
+          {node.data_type && <Property label="Data Type" value={node.data_type} mono />}
           {node.value != null && <Property label="Value" value={node.value} mono />}
           {node.is_test && <Property label="Kind" value="test file" />}
           {node.line_count != null && <Property label="Lines" value={node.line_count} />}
@@ -142,18 +145,7 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
           <Section title={`Called From (${calledFrom.length})`}>
             <div className="flex flex-col gap-1">
               {calledFrom.map((caller) => (
-                <button
-                  key={caller.id}
-                  className="text-left text-xs text-gray-300 font-mono hover:text-white hover:underline underline-offset-2 transition-colors truncate"
-                  onClick={() => onSelectNode(caller.id)}
-                  title={[
-                    caller.qualified_name ?? caller.label,
-                    caller.file_path ? `File: ${caller.file_path}` : null,
-                    caller.visibility ? `Visibility: ${caller.visibility}` : null,
-                  ].filter(Boolean).join("\n")}
-                >
-                  {callerLabel(caller)}
-                </button>
+                <CallerRow key={caller.id} caller={caller} onSelect={() => onSelectNode(caller.id)} />
               ))}
             </div>
           </Section>
@@ -165,7 +157,7 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
         <button onClick={() => onBlastRadius(node.id)} className="btn-ghost w-full text-left text-xs">
           Blast Radius
         </button>
-        {node.node_type === "Function" && (
+        {isCallable && (
           <button onClick={() => onExecutionFlow(node.id)} className="btn-ghost w-full text-left text-xs">
             Execution Flow
           </button>
@@ -180,6 +172,39 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="flex flex-col gap-2">
       <span className="text-xs text-gray-500 uppercase tracking-widest">{title}</span>
       <div className="flex flex-col gap-2">{children}</div>
+    </div>
+  );
+}
+
+function CallerRow({ caller, onSelect }: { caller: GraphNodeData; onSelect: () => void }) {
+  const [show, setShow] = useState(false);
+  const color = NODE_COLORS[caller.node_type] ?? "#8b949e";
+  return (
+    <div className="relative" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <button
+        className="w-full text-left text-xs text-gray-300 font-mono hover:text-white hover:underline underline-offset-2 transition-colors truncate"
+        onClick={onSelect}
+      >
+        {callerLabel(caller)}
+      </button>
+      {show && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-full bg-surface-elevated border border-surface-border rounded-md shadow-xl p-2.5 flex flex-col gap-1.5 pointer-events-none">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <span className="text-xs font-semibold text-white truncate">{caller.label}</span>
+          </div>
+          <span className="text-[10px] text-gray-400 uppercase tracking-widest">{caller.node_type}</span>
+          {caller.qualified_name && caller.qualified_name !== caller.label && (
+            <span className="text-[10px] font-mono text-gray-300 break-all">{caller.qualified_name}</span>
+          )}
+          {caller.file_path && (
+            <span className="text-[10px] text-gray-300 break-all">{caller.file_path}{caller.line != null ? `:${caller.line}` : ""}</span>
+          )}
+          {caller.visibility && (
+            <span className="text-[10px] text-gray-400">{caller.visibility}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

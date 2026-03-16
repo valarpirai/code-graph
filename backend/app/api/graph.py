@@ -63,6 +63,11 @@ def get_graph(project_id: str):
             v = g.value(s, pred)
             return bool(v) if v is not None else None
 
+        if node_type == "ExternalSymbol":
+            caller_count = sum(1 for _ in g.triples((None, CG.calls, s)))
+            if caller_count:
+                data["caller_count"] = caller_count
+
         for key, val in [
             ("file_path",        _str(CG.filePath)),
             ("language",         _str(CG.language)),

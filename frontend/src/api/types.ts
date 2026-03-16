@@ -80,6 +80,7 @@ export interface GraphNodeData {
   line_count?: number;
   file_size?: number;
   cluster_id?: string;
+  caller_count?: number;
   [key: string]: unknown;
 }
 

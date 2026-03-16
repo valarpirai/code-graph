@@ -106,9 +106,21 @@ export const baseStylesheet: Stylesheet[] = [
   {
     selector: "node:selected",
     style: {
-      "border-width": 2,
-      "border-color": "#58a6ff",
-      "background-color": "#58a6ff",
+      "border-width": 3,
+      "border-color": "#ffffff",
+      "border-style": "solid",
+      "background-color": (ele) =>
+        NODE_COLORS[ele.data("node_type") as NodeType] ?? "#484f58",
+      width: 30,
+      height: 30,
+      color: "#ffffff",
+      "font-size": "10px",
+      "font-weight": "bold",
+      "text-background-color": "#0d1117",
+      "text-background-opacity": 0.9,
+      "overlay-color": "#ffffff",
+      "overlay-padding": 6,
+      "overlay-opacity": 0.15,
     },
   },
   {
