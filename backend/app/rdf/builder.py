@@ -78,13 +78,21 @@ class RDFBuilder:
             g.add((file_uri, CG.defines, uri))
 
     def _add_variable(self, g, project_id, file_uri, const: ConstantDef):
-        uri = _uri(project_id, "variable", f"{file_uri}/{const.name}")
+        # Use owner + name as URI to avoid collisions across files
+        scope = const.owner_qname or str(file_uri)
+        uri = _uri(project_id, "variable", f"{scope}/{const.name}/{const.line}")
         g.add((uri, RDF.type, CG.Variable))
         g.add((uri, CG.name, Literal(const.name)))
         g.add((uri, CG.line, Literal(const.line, datatype=XSD.integer)))
+        g.add((uri, CG.varKind, Literal(const.var_kind)))
         if const.value is not None:
             g.add((uri, CG.value, Literal(const.value)))
-        g.add((file_uri, CG.defines, uri))
+        # Link to owner: class field → hasField; local/file-level → defines
+        if const.owner_qname and const.var_kind in ("instance", "static", "constant", "final"):
+            owner_uri = _uri(project_id, "class", const.owner_qname)
+            g.add((owner_uri, CG.hasField, uri))
+        else:
+            g.add((file_uri, CG.defines, uri))
 
     def _add_import(self, g, project_id, file_uri, imp: ImportDef):
         uri = _uri(project_id, "import", imp.source)

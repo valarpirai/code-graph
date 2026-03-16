@@ -20,6 +20,7 @@ export const EDGE_COLORS: Record<EdgeRelation, string> = {
   defines: "#bc8cff",
   uses: "#8b949e",
   hasMethod: "#d29922",
+  hasField: "#8b949e",
 };
 
 export const CLUSTER_PALETTE = [
@@ -124,4 +125,10 @@ export const baseStylesheet: Stylesheet[] = [
       "border-style": "dashed",
     },
   },
+  // Variable kind overrides — all use the Variable base color but with different borders
+  { selector: "node[var_kind = 'instance']",  style: { "border-width": 1, "border-color": "#8b949e", "border-style": "solid" } },
+  { selector: "node[var_kind = 'static']",    style: { "border-width": 2, "border-color": "#bc8cff", "border-style": "solid" } },
+  { selector: "node[var_kind = 'constant']",  style: { "border-width": 2, "border-color": "#d29922", "border-style": "solid" } },
+  { selector: "node[var_kind = 'final']",     style: { "border-width": 2, "border-color": "#58a6ff", "border-style": "solid" } },
+  { selector: "node[var_kind = 'local']",     style: { "border-width": 1, "border-color": "#484f58", "border-style": "dotted" } },
 ];

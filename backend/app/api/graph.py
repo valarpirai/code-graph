@@ -75,13 +75,14 @@ def get_graph(project_id: str):
             ("value",            _str(CG.value)),
             ("class_kind",       _str(CG.classKind)),
             ("is_test",          _bool(CG.isTest)),
+            ("var_kind",         _str(CG.varKind)),
         ]:
             if val is not None and val != "" and val is not False:
                 data[key] = val
         nodes.append({"data": data})
 
     for s, p, o in g:
-        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod, CG.containsFile, CG.containsClass):
+        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod, CG.hasField, CG.containsFile, CG.containsClass):
             src, tgt = str(s), str(o)
             if src in node_ids and tgt in node_ids:
                 edges.append({"data": {

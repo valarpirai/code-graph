@@ -38,7 +38,8 @@ export type EdgeRelation =
   | "containsClass"
   | "defines"
   | "uses"
-  | "hasMethod";
+  | "hasMethod"
+  | "hasField";
 
 export interface GraphNodeData {
   id: string;
@@ -55,6 +56,7 @@ export interface GraphNodeData {
   value?: string;
   class_kind?: string;
   is_test?: boolean;
+  var_kind?: string;
   cluster_id?: string;
   [key: string]: unknown;
 }

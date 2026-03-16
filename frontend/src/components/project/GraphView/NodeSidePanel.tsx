@@ -9,7 +9,7 @@ interface Props {
   onExecutionFlow: (nodeUri: string) => void;
 }
 
-const PARENT_RELATIONS = new Set(["defines", "hasMethod", "containsFile", "containsClass"]);
+const PARENT_RELATIONS = new Set(["defines", "hasMethod", "hasField", "containsFile", "containsClass"]);
 const MAX_ANCESTRY_LEVELS = 5;
 const MAX_CALL_LEVELS = 4;
 
@@ -103,6 +103,7 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
             <Property label="Entry Point Score" value={node.entry_point_score} />
           )}
           {node.framework_role && <Property label="Framework Role" value={node.framework_role} />}
+          {node.var_kind && <Property label="Variable Kind" value={node.var_kind} />}
           {node.value != null && <Property label="Value" value={node.value} mono />}
           {node.is_test && <Property label="Kind" value="test file" />}
           {node.cluster_id && <Property label="Cluster" value={node.cluster_id} />}

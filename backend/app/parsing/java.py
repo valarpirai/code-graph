@@ -184,19 +184,75 @@ class JavaParser(BaseParser):
         return fields
 
     def _extract_constants(self, root, package: str) -> list[ConstantDef]:
+        """Capture all field declarations (class-level) and local variable declarations."""
         constants = []
+
+        # Class-level field declarations — categorised by modifier
         for node in self._walk(root, "field_declaration"):
             modifiers = self._get_modifiers(node)
-            if "static" in modifiers and "final" in modifiers:
-                for decl in self._walk(node, "variable_declarator"):
-                    name = self._child_text(decl, "identifier")
-                    val_node = decl.child_by_field_name("value")
-                    constants.append(ConstantDef(
-                        name=name,
-                        value=val_node.text.decode() if val_node else None,
-                        line=node.start_point[0] + 1,
-                    ))
+            is_static = "static" in modifiers
+            is_final = "final" in modifiers
+            if is_static and is_final:
+                kind = "constant"
+            elif is_static:
+                kind = "static"
+            elif is_final:
+                kind = "final"
+            else:
+                kind = "instance"
+            # Determine owning class by walking up
+            owner_qname = self._owning_class_qname(node, package)
+            for decl in self._walk(node, "variable_declarator"):
+                name = self._child_text(decl, "identifier")
+                val_node = decl.child_by_field_name("value")
+                constants.append(ConstantDef(
+                    name=name,
+                    value=val_node.text.decode() if val_node else None,
+                    line=node.start_point[0] + 1,
+                    var_kind=kind,
+                    owner_qname=owner_qname,
+                ))
+
+        # Local variable declarations inside method/constructor bodies
+        for node in self._walk(root, "local_variable_declaration"):
+            owner_qname = self._owning_method_qname(node, package)
+            for decl in self._walk(node, "variable_declarator"):
+                name = self._child_text(decl, "identifier")
+                constants.append(ConstantDef(
+                    name=name,
+                    value=None,
+                    line=node.start_point[0] + 1,
+                    var_kind="local",
+                    owner_qname=owner_qname,
+                ))
+
         return constants
+
+    def _owning_class_qname(self, node, package: str) -> Optional[str]:
+        """Walk up to find the nearest enclosing class and return its qualified name."""
+        current = node.parent
+        while current is not None:
+            if current.type in ("class_declaration", "interface_declaration"):
+                name = self._child_text(current, "identifier")
+                return f"{package}.{name}" if package else name
+            current = current.parent
+        return None
+
+    def _owning_method_qname(self, node, package: str) -> Optional[str]:
+        """Walk up to find the nearest enclosing method and return qualified name."""
+        current = node.parent
+        method_name = None
+        class_qname = None
+        while current is not None:
+            if current.type == "method_declaration" and method_name is None:
+                method_name = self._child_text(current, "identifier")
+            if current.type in ("class_declaration", "interface_declaration") and class_qname is None:
+                cname = self._child_text(current, "identifier")
+                class_qname = f"{package}.{cname}" if package else cname
+            current = current.parent
+        if class_qname and method_name:
+            return f"{class_qname}.{method_name}"
+        return class_qname
 
     def _extract_top_level_functions(self, root, package: str) -> list[FunctionDef]:
         return []

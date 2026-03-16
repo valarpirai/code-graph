@@ -2,13 +2,14 @@ import type { NodeType, EdgeRelation } from "../../../api/types";
 import { NODE_COLORS, EDGE_COLORS } from "../GraphView/cytoscapeConfig";
 
 const ALL_NODE_TYPES: NodeType[] = ["File", "Class", "Function", "Variable", "ExternalSymbol", "Module"];
-const ALL_EDGE_RELATIONS: EdgeRelation[] = ["calls", "imports", "inherits", "contains", "containsFile", "containsClass", "defines", "uses", "hasMethod"];
+const ALL_EDGE_RELATIONS: EdgeRelation[] = ["calls", "imports", "inherits", "contains", "containsFile", "containsClass", "defines", "uses", "hasMethod", "hasField"];
 
 export interface FilterState {
   visibleNodeTypes: Set<NodeType>;
   visibleEdgeRelations: Set<EdgeRelation>;
   showClusters: boolean;
   showTestFiles: boolean;
+  showLocalVars: boolean;
 }
 
 export function defaultFilterState(): FilterState {
@@ -18,6 +19,7 @@ export function defaultFilterState(): FilterState {
     visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS),
     showClusters: false,
     showTestFiles: true,
+    showLocalVars: false,  // local variables are too numerous by default
   };
 }
 
@@ -53,6 +55,10 @@ export default function FilterPanel({ filters, onChange }: Props) {
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={filters.showTestFiles} onChange={() => onChange({ ...filters, showTestFiles: !filters.showTestFiles })} className="accent-accent-blue" />
         <span className="text-gray-300">Show test files</span>
+      </label>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" checked={filters.showLocalVars} onChange={() => onChange({ ...filters, showLocalVars: !filters.showLocalVars })} className="accent-accent-blue" />
+        <span className="text-gray-300">Show local variables</span>
       </label>
     </div>
   );

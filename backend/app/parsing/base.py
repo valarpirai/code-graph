@@ -22,6 +22,8 @@ class ConstantDef:
     name: str
     value: Optional[str]
     line: int
+    var_kind: str = "constant"    # constant | static | instance | final | local
+    owner_qname: Optional[str] = None  # qualified name of owning class or method
 
 
 @dataclass
