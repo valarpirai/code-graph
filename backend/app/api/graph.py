@@ -80,7 +80,7 @@ def get_graph(project_id: str):
         nodes.append({"data": data})
 
     for s, p, o in g:
-        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod, CG.contains):
+        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod, CG.containsFile, CG.containsClass):
             src, tgt = str(s), str(o)
             if src in node_ids and tgt in node_ids:
                 edges.append({"data": {

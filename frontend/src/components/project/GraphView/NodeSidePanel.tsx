@@ -9,7 +9,7 @@ interface Props {
   onExecutionFlow: (nodeUri: string) => void;
 }
 
-const PARENT_RELATIONS = new Set(["defines", "hasMethod", "contains"]);
+const PARENT_RELATIONS = new Set(["defines", "hasMethod", "containsFile", "containsClass"]);
 const MAX_ANCESTRY_LEVELS = 5;
 const MAX_CALL_LEVELS = 4;
 

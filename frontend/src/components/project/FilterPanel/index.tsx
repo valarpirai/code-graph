@@ -2,7 +2,7 @@ import type { NodeType, EdgeRelation } from "../../../api/types";
 import { NODE_COLORS, EDGE_COLORS } from "../GraphView/cytoscapeConfig";
 
 const ALL_NODE_TYPES: NodeType[] = ["File", "Class", "Function", "Variable", "ExternalSymbol", "Module"];
-const ALL_EDGE_RELATIONS: EdgeRelation[] = ["calls", "imports", "inherits", "contains", "defines", "uses", "hasMethod"];
+const ALL_EDGE_RELATIONS: EdgeRelation[] = ["calls", "imports", "inherits", "contains", "containsFile", "containsClass", "defines", "uses", "hasMethod"];
 
 export interface FilterState {
   visibleNodeTypes: Set<NodeType>;

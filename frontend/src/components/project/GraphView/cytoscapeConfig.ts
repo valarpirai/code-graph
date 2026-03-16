@@ -15,6 +15,8 @@ export const EDGE_COLORS: Record<EdgeRelation, string> = {
   imports: "#58a6ff",
   inherits: "#3fb950",
   contains: "#484f58",
+  containsFile: "#6e7681",
+  containsClass: "#79c0ff",
   defines: "#bc8cff",
   uses: "#8b949e",
   hasMethod: "#d29922",

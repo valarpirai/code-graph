@@ -25,9 +25,13 @@ class RDFBuilder:
             g.add((file_uri, RDF.type, CG.File))
             g.add((file_uri, CG.filePath, Literal(pf.file_path)))
             g.add((file_uri, CG.language, Literal(pf.language)))
-            # Connect package → file
+            # Connect package → file and package → class
             if pf.package and pf.package in package_uris:
-                g.add((package_uris[pf.package], CG.contains, file_uri))
+                pkg_uri = package_uris[pf.package]
+                g.add((pkg_uri, CG.containsFile, file_uri))
+                for cls in pf.classes:
+                    cls_uri = _uri(project_id, "class", cls.qualified_name)
+                    g.add((pkg_uri, CG.containsClass, cls_uri))
             for cls in pf.classes:
                 self._add_class(g, project_id, file_uri, cls)
             for fn in pf.functions:

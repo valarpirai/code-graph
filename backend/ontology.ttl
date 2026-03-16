@@ -59,8 +59,20 @@ cg:hasMethod a owl:ObjectProperty ;
 
 cg:contains a owl:ObjectProperty ;
     rdfs:domain cg:Module ;
-    rdfs:range cg:File ;
+    rdfs:range owl:Thing ;
     rdfs:label "contains" .
+
+cg:containsFile a owl:ObjectProperty ;
+    rdfs:subPropertyOf cg:contains ;
+    rdfs:domain cg:Module ;
+    rdfs:range cg:File ;
+    rdfs:label "containsFile" .
+
+cg:containsClass a owl:ObjectProperty ;
+    rdfs:subPropertyOf cg:contains ;
+    rdfs:domain cg:Module ;
+    rdfs:range cg:Class ;
+    rdfs:label "containsClass" .
 
 cg:dependsOn a owl:ObjectProperty ;
     rdfs:domain owl:Thing ;
