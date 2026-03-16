@@ -148,7 +148,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Always-visible filter sidebar */}
-      <div className="w-52 shrink-0 border-r border-surface-border overflow-y-auto">
+      <div className="w-52 shrink-0 border-r border-surface-border overflow-y-auto h-full">
         <FilterPanel filters={filters} onChange={setFilters} />
       </div>
 
