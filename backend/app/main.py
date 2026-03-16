@@ -23,6 +23,9 @@ def health_check():
 from app.api.projects import router as projects_router
 app.include_router(projects_router)
 
+from app.api.graph import router as graph_router
+app.include_router(graph_router)
+
 from fastapi import WebSocket, WebSocketDisconnect
 from app.ws.indexing import notifier
 
