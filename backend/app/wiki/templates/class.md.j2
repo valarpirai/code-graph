@@ -1,0 +1,80 @@
+# Class: {{ cls.name }}
+
+**File:** `{{ cls.filePath }}`
+**Language:** {{ cls.language or 'unknown' }}
+**Line:** {{ cls.lineNumber or 'N/A' }}
+
+---
+
+{% if inheritance %}
+## Inheritance
+
+{% for parent in inheritance -%}
+- `{{ parent }}`
+{% endfor %}
+{% endif %}
+
+{% if interfaces %}
+## Implements
+
+{% for iface in interfaces -%}
+- `{{ iface }}`
+{% endfor %}
+{% endif %}
+
+{% if mixins %}
+## Mixins
+
+{% for mixin in mixins -%}
+- `{{ mixin }}`
+{% endfor %}
+{% endif %}
+
+## Fields
+
+| Name | Type | Visibility | Mutability | Default |
+|------|------|------------|------------|---------|
+{% for f in fields -%}
+| {{ f.fieldName }} | {{ f.fieldType or '' }} | {{ f.visibility or '' }} | {{ f.mutability or '' }} | {{ f.defaultValue or '' }} |
+{% endfor %}
+
+## Methods
+
+| Name | Return Type | Line |
+|------|-------------|------|
+{% for m in methods -%}
+| {{ m.methodName }} | {{ m.returnType or '' }} | {{ m.lineNumber or '' }} |
+{% endfor %}
+
+---
+
+## Callers
+
+{% if callers %}
+{% for c in callers -%}
+- `{{ c.callerName }}` ({{ c.callerType }})
+{% endfor %}
+{% else %}
+_No callers found._
+{% endif %}
+
+## Dependencies
+
+{% if dependencies %}
+{% for d in dependencies -%}
+- [{{ d.depName }}]({{ d.depName }}.md)
+{% endfor %}
+{% else %}
+_No outgoing class dependencies._
+{% endif %}
+
+---
+
+## Cluster
+
+{% if cluster %}
+**Cluster ID:** {{ cluster.cluster }}
+**Cohesion Score:** {{ cluster.cohesionScore }}
+{% else %}
+_Not assigned to a cluster._
+{% endif %}

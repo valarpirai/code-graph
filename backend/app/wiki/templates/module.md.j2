@@ -1,0 +1,47 @@
+# Module: {{ module.name }}
+
+**File:** `{{ module.filePath }}`
+
+---
+
+## Classes
+
+{% if classes %}
+{% for c in classes -%}
+- [{{ c.clsName }}](../classes/{{ c.clsName }}.md)
+{% endfor %}
+{% else %}
+_No classes in this module._
+{% endif %}
+
+## Standalone Functions
+
+{% if functions %}
+{% for f in functions -%}
+- [{{ f.fnName }}](../functions/{{ module.name }}_{{ f.fnName }}.md)
+{% endfor %}
+{% else %}
+_No standalone functions in this module._
+{% endif %}
+
+## Constants
+
+{% if constants %}
+| Name | Type | Value |
+|------|------|-------|
+{% for c in constants -%}
+| {{ c.constName }} | {{ c.constType or '' }} | {{ c.constValue or '' }} |
+{% endfor %}
+{% else %}
+_No constants in this module._
+{% endif %}
+
+## Import Dependencies
+
+{% if imports %}
+{% for i in imports -%}
+- `{{ i.importTarget }}`
+{% endfor %}
+{% else %}
+_No imports recorded._
+{% endif %}

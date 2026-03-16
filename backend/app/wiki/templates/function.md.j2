@@ -1,0 +1,73 @@
+# Function: {{ fn.name }}
+
+**File:** `{{ fn.filePath }}`
+**Language:** {{ fn.language or 'unknown' }}
+**Line:** {{ fn.lineNumber or 'N/A' }}
+
+---
+
+## Parameters
+
+{% if parameters %}
+| Name | Type |
+|------|------|
+{% for p in parameters -%}
+| {{ p.paramName }} | {{ p.paramType or '' }} |
+{% endfor %}
+{% else %}
+_No parameters._
+{% endif %}
+
+## Local Variables
+
+{% if local_vars %}
+| Name | Type | Mutability |
+|------|------|------------|
+{% for v in local_vars -%}
+| {{ v.varName }} | {{ v.varType or '' }} | {{ v.mutability or '' }} |
+{% endfor %}
+{% else %}
+_No local variables recorded._
+{% endif %}
+
+---
+
+## Callers
+
+{% if callers %}
+{% for c in callers -%}
+- `{{ c.callerName }}`
+{% endfor %}
+{% else %}
+_No callers found._
+{% endif %}
+
+## Callees
+
+{% if callees %}
+{% for c in callees -%}
+- `{{ c.calleeName }}`
+{% endfor %}
+{% else %}
+_No callees found._
+{% endif %}
+
+---
+
+## Framework Role
+
+{% if framework_role %}
+**Role:** {{ framework_role.role or 'N/A' }}
+**Entry Point Score:** {{ framework_role.entryPointScore or '0' }}
+{% else %}
+_No framework role assigned._
+{% endif %}
+
+## Cluster
+
+{% if cluster %}
+**Cluster ID:** {{ cluster.cluster }}
+**Cohesion Score:** {{ cluster.cohesionScore }}
+{% else %}
+_Not assigned to a cluster._
+{% endif %}

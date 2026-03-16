@@ -1,0 +1,41 @@
+# {{ project.name }}
+
+**Source URL:** {{ project.source_url }}
+**Last Indexed:** {{ project.last_indexed }}
+
+---
+
+## Languages
+
+{% for lang in languages -%}
+- {{ lang }}
+{% endfor %}
+
+---
+
+## Statistics
+
+| Metric | Count |
+|--------|-------|
+| Files | {{ stats.fileCount }} |
+| Functions | {{ stats.functionCount }} |
+| Classes | {{ stats.classCount }} |
+| Fields | {{ stats.fieldCount }} |
+
+---
+
+## Modules
+
+{% for mod in modules -%}
+- [{{ mod.name }}](modules/{{ mod.name }}.md) — `{{ mod.filePath }}`
+{% endfor %}
+
+---
+
+## Functional Clusters
+
+| Cluster | Cohesion Score | Top Node |
+|---------|---------------|----------|
+{% for c in clusters -%}
+| {{ c.cluster }} | {{ c.cohesionScore }} | {{ c.topNode or '' }} |
+{% endfor %}
