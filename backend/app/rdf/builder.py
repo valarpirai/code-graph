@@ -103,18 +103,28 @@ class RDFBuilder:
         g.add((file_uri, CG.imports, uri))
 
     def _add_call_edges(self, g, project_id, parsed_files: list[ParsedFile]):
-        known = {fn.qualified_name for pf in parsed_files
-                 for cls in pf.classes for fn in cls.methods}
-        known |= {fn.qualified_name for pf in parsed_files for fn in pf.functions}
+        known_qnames = {fn.qualified_name for pf in parsed_files
+                        for cls in pf.classes for fn in cls.methods}
+        known_qnames |= {fn.qualified_name for pf in parsed_files for fn in pf.functions}
+
+        # simple name → list of qualified names (for fuzzy resolution)
+        name_to_qnames: dict[str, list[str]] = {}
+        for qname in known_qnames:
+            simple = qname.split(".")[-1]
+            name_to_qnames.setdefault(simple, []).append(qname)
+
         for pf in parsed_files:
             all_fns = [fn for cls in pf.classes for fn in cls.methods] + pf.functions
             for fn in all_fns:
                 caller = _uri(project_id, "function", fn.qualified_name)
                 for callee_name in fn.calls:
-                    if callee_name in known:
-                        callee = _uri(project_id, "function", callee_name)
+                    if callee_name in known_qnames:
+                        g.add((caller, CG.calls, _uri(project_id, "function", callee_name)))
+                    elif callee_name in name_to_qnames:
+                        for qname in name_to_qnames[callee_name]:
+                            g.add((caller, CG.calls, _uri(project_id, "function", qname)))
                     else:
                         callee = _uri(project_id, "external", callee_name)
                         g.add((callee, RDF.type, CG.ExternalSymbol))
                         g.add((callee, CG.name, Literal(callee_name)))
-                    g.add((caller, CG.calls, callee))
+                        g.add((caller, CG.calls, callee))

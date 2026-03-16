@@ -12,7 +12,6 @@ interface Props {
 
 const PARENT_RELATIONS = new Set(["defines", "hasMethod", "hasField", "containsFile", "containsClass"]);
 const MAX_ANCESTRY_LEVELS = 5;
-const MAX_CALL_LEVELS = 4;
 
 function computeAncestry(nodeId: string, graphData: GraphResponse): GraphNodeData[] {
   const nodeMap = new Map(graphData.nodes.map((n) => [n.data.id, n.data]));
@@ -32,23 +31,19 @@ function computeAncestry(nodeId: string, graphData: GraphResponse): GraphNodeDat
   return ancestors;
 }
 
-interface CallNode {
-  node: GraphNodeData;
-  children: CallNode[];
+function computeCalledFrom(nodeId: string, graphData: GraphResponse): GraphNodeData[] {
+  const nodeMap = new Map(graphData.nodes.map((n) => [n.data.id, n.data]));
+  return graphData.edges
+    .filter((e) => e.data.target === nodeId && e.data.relation === "calls")
+    .map((e) => nodeMap.get(e.data.source))
+    .filter((n): n is GraphNodeData => n != null);
 }
 
-function buildCallTree(nodeId: string, graphData: GraphResponse, depth: number, visited: Set<string>): CallNode[] {
-  if (depth === 0) return [];
-  const nodeMap = new Map(graphData.nodes.map((n) => [n.data.id, n.data]));
-  const callees = graphData.edges
-    .filter((e) => e.data.source === nodeId && e.data.relation === "calls")
-    .map((e) => nodeMap.get(e.data.target))
-    .filter((n): n is GraphNodeData => n != null && !visited.has(n.id));
-
-  return callees.slice(0, 8).map((callee) => {
-    const nextVisited = new Set(visited).add(callee.id);
-    return { node: callee, children: buildCallTree(callee.id, graphData, depth - 1, nextVisited) };
-  });
+function callerLabel(caller: GraphNodeData): string {
+  const qname = caller.qualified_name ?? caller.label;
+  const parts = qname.split(".");
+  const short = parts.length >= 2 ? parts.slice(-2).join(".") : qname;
+  return caller.line != null ? `${short}:L${caller.line}` : short;
 }
 
 function computeModuleStats(nodeId: string, graphData: GraphResponse) {
@@ -65,9 +60,7 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
   const color = NODE_COLORS[node.node_type] ?? "#8b949e";
   const ancestors = computeAncestry(node.id, graphData);
   const moduleStats = node.node_type === "Module" ? computeModuleStats(node.id, graphData) : null;
-  const callTree = node.node_type === "Function"
-    ? buildCallTree(node.id, graphData, MAX_CALL_LEVELS, new Set([node.id]))
-    : [];
+  const calledFrom = node.node_type === "Function" ? computeCalledFrom(node.id, graphData) : [];
 
   return (
     <div className="absolute top-0 right-0 h-full w-80 card border-l border-t-0 border-r-0 border-b-0 rounded-none flex flex-col z-10 overflow-y-auto">
@@ -142,10 +135,20 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
             </div>
           </Section>
         )}
-        {/* Call tree */}
-        {callTree.length > 0 && (
-          <Section title="Calls (up to 4 levels)">
-            <CallTreeNodes nodes={callTree} indent={0} />
+        {/* Called From */}
+        {calledFrom.length > 0 && (
+          <Section title={`Called From (${calledFrom.length})`}>
+            <div className="flex flex-col gap-1">
+              {calledFrom.map((caller) => (
+                <button
+                  key={caller.id}
+                  className="text-left text-xs text-gray-300 font-mono hover:text-white hover:underline underline-offset-2 transition-colors truncate"
+                  onClick={() => onSelectNode(caller.id)}
+                >
+                  {callerLabel(caller)}
+                </button>
+              ))}
+            </div>
           </Section>
         )}
       </div>
@@ -185,24 +188,3 @@ function Property({ label, value, mono }: { label: string; value: string | numbe
   );
 }
 
-function CallTreeNodes({ nodes, indent }: { nodes: CallNode[]; indent: number }) {
-  return (
-    <>
-      {nodes.map((item) => {
-        const c = NODE_COLORS[item.node.node_type] ?? "#8b949e";
-        return (
-          <div key={item.node.id}>
-            <div className="flex items-center gap-1.5 py-0.5" style={{ paddingLeft: indent * 12 }}>
-              {indent > 0 && <span className="text-gray-600 text-xs shrink-0">↳</span>}
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c }} />
-              <span className="text-xs text-gray-300 truncate">{item.node.label}</span>
-            </div>
-            {item.children.length > 0 && (
-              <CallTreeNodes nodes={item.children} indent={indent + 1} />
-            )}
-          </div>
-        );
-      })}
-    </>
-  );
-}
