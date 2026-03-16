@@ -117,6 +117,17 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     } catch (err) { console.error("Execution flow failed", err); }
   }, [cy, projectId]);
 
+  const handleSelectNode = useCallback((nodeId: string) => {
+    if (!cy || !graphData) return;
+    cy.nodes().unselect();
+    const ele = cy.getElementById(nodeId);
+    if (ele.length) {
+      ele.select();
+      cy.animate({ center: { eles: ele }, zoom: 1.5 }, { duration: 300 });
+      setSelectedNode(ele.data() as GraphNodeData);
+    }
+  }, [cy, graphData]);
+
   const handleSearch = useCallback((term: string) => {
     if (!cy) return;
     if (!term.trim()) { cy.elements().removeClass("faded"); return; }
@@ -147,7 +158,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
         <div ref={containerRef} className="flex-1 bg-surface" />
         <MiniMap cy={cy} />
         {selectedNode && (
-          <NodeSidePanel node={selectedNode} graphData={graphData ?? { nodes: [], edges: [] }} onClose={() => setSelectedNode(null)} onBlastRadius={handleBlastRadius} onExecutionFlow={handleExecutionFlow} />
+          <NodeSidePanel node={selectedNode} graphData={graphData ?? { nodes: [], edges: [] }} onClose={() => setSelectedNode(null)} onBlastRadius={handleBlastRadius} onExecutionFlow={handleExecutionFlow} onSelectNode={handleSelectNode} />
         )}
       </div>
     </div>

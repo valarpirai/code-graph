@@ -7,6 +7,7 @@ interface Props {
   onClose: () => void;
   onBlastRadius: (nodeUri: string) => void;
   onExecutionFlow: (nodeUri: string) => void;
+  onSelectNode: (nodeId: string) => void;
 }
 
 const PARENT_RELATIONS = new Set(["defines", "hasMethod", "hasField", "containsFile", "containsClass"]);
@@ -60,7 +61,7 @@ function computeModuleStats(nodeId: string, graphData: GraphResponse) {
   return { classCount, fileCount };
 }
 
-export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius, onExecutionFlow }: Props) {
+export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius, onExecutionFlow, onSelectNode }: Props) {
   const color = NODE_COLORS[node.node_type] ?? "#8b949e";
   const ancestors = computeAncestry(node.id, graphData);
   const moduleStats = node.node_type === "Module" ? computeModuleStats(node.id, graphData) : null;
@@ -128,10 +129,13 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
                         <span className="w-px flex-1 bg-surface-border mt-1" style={{ minHeight: 12 }} />
                       )}
                     </div>
-                    <div className="flex flex-col min-w-0 pb-2">
-                      <span className="text-xs text-gray-400 truncate">{ancestor.label}</span>
+                    <button
+                      className="flex flex-col min-w-0 pb-2 text-left hover:opacity-80 transition-opacity cursor-pointer"
+                      onClick={() => onSelectNode(ancestor.id)}
+                    >
+                      <span className="text-xs text-gray-400 truncate underline-offset-2 hover:underline">{ancestor.label}</span>
                       <span className="text-xs text-gray-600">{ancestor.node_type}</span>
-                    </div>
+                    </button>
                   </div>
                 );
               })}
