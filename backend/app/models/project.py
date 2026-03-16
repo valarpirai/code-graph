@@ -1,0 +1,23 @@
+from enum import Enum
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel
+
+class ProjectStatus(str, Enum):
+    PENDING = "pending"
+    INDEXING = "indexing"
+    READY = "ready"
+    ERROR = "error"
+
+class ProjectMeta(BaseModel):
+    id: str
+    name: str
+    source: str                          # GitHub URL or zip filename
+    languages: list[str] = []
+    status: ProjectStatus = ProjectStatus.PENDING
+    error_message: Optional[str] = None
+    last_indexed: Optional[datetime] = None
+
+class ProjectCreate(BaseModel):
+    github_url: Optional[str] = None
+    # zip upload handled via multipart form, not this model
