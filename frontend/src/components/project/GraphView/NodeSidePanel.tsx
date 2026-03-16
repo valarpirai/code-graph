@@ -100,6 +100,8 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
           {node.var_kind && <Property label="Variable Kind" value={node.var_kind} />}
           {node.value != null && <Property label="Value" value={node.value} mono />}
           {node.is_test && <Property label="Kind" value="test file" />}
+          {node.line_count != null && <Property label="Lines" value={node.line_count} />}
+          {node.file_size != null && <Property label="Size" value={`${(node.file_size / 1024).toFixed(1)} KB`} />}
           {node.cluster_id && <Property label="Cluster" value={node.cluster_id} />}
           {moduleStats && <Property label="Classes" value={moduleStats.classCount} />}
           {moduleStats && <Property label="Files" value={moduleStats.fileCount} />}

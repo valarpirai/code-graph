@@ -1,6 +1,7 @@
 from pathlib import Path
 
 EXTENSION_MAP: dict[str, str] = {
+    # Code
     ".java": "java",
     ".ts": "typescript",
     ".tsx": "typescript",
@@ -16,6 +17,22 @@ EXTENSION_MAP: dict[str, str] = {
     ".c": "c",
     ".h": "c",
     ".py": "python",
+    # Markup / config
+    ".xml": "xml",
+    ".json": "json",
+    ".md": "markdown",
+    ".markdown": "markdown",
+    ".yml": "yaml",
+    ".yaml": "yaml",
+    ".html": "html",
+    ".htm": "html",
+    ".css": "css",
+    ".scss": "css",
+    ".sql": "sql",
+    ".sh": "shell",
+    ".bash": "shell",
+    ".toml": "toml",
+    ".properties": "properties",
 }
 
 def detect_languages(root: Path) -> list[str]:

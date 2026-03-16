@@ -76,6 +76,8 @@ def get_graph(project_id: str):
             ("class_kind",       _str(CG.classKind)),
             ("is_test",          _bool(CG.isTest)),
             ("is_abstract",      _bool(CG.isAbstract)),
+            ("line_count",       _int(CG.lineCount)),
+            ("file_size",        _int(CG.fileSize)),
             ("var_kind",         _str(CG.varKind)),
         ]:
             if val is not None and val != "" and val is not False:

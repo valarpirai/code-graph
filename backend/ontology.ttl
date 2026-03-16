@@ -140,3 +140,11 @@ cg:varKind a owl:DatatypeProperty ;
 cg:isAbstract a owl:DatatypeProperty ;
     rdfs:range xsd:boolean ;
     rdfs:label "isAbstract" .
+
+cg:lineCount a owl:DatatypeProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "lineCount" .
+
+cg:fileSize a owl:DatatypeProperty ;
+    rdfs:range xsd:integer ;
+    rdfs:label "fileSize" .

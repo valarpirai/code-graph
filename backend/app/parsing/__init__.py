@@ -8,8 +8,10 @@ from .kotlin import KotlinParser
 from .ruby import RubyParser
 from .c import CParser
 from .python import PythonParser
+from .markup import GenericXmlParser, GenericJsonParser, MarkdownParser, YamlParser, HtmlParser
 
 _EXTENSION_MAP: dict[str, type] = {
+    # Code
     ".java": JavaParser,
     ".ts": TypeScriptParser,
     ".tsx": TypeScriptParser,
@@ -22,6 +24,15 @@ _EXTENSION_MAP: dict[str, type] = {
     ".c": CParser,
     ".h": CParser,
     ".py": PythonParser,
+    # Markup / config
+    ".xml": GenericXmlParser,
+    ".json": GenericJsonParser,
+    ".md": MarkdownParser,
+    ".markdown": MarkdownParser,
+    ".yml": YamlParser,
+    ".yaml": YamlParser,
+    ".html": HtmlParser,
+    ".htm": HtmlParser,
 }
 
 
