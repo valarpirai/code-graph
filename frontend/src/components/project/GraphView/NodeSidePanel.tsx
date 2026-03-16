@@ -50,9 +50,20 @@ function buildCallTree(nodeId: string, graphData: GraphResponse, depth: number, 
   });
 }
 
+function computeModuleStats(nodeId: string, graphData: GraphResponse) {
+  const classCount = graphData.edges.filter(
+    (e) => e.data.source === nodeId && e.data.relation === "containsClass"
+  ).length;
+  const fileCount = graphData.edges.filter(
+    (e) => e.data.source === nodeId && e.data.relation === "containsFile"
+  ).length;
+  return { classCount, fileCount };
+}
+
 export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius, onExecutionFlow }: Props) {
   const color = NODE_COLORS[node.node_type] ?? "#8b949e";
   const ancestors = computeAncestry(node.id, graphData);
+  const moduleStats = node.node_type === "Module" ? computeModuleStats(node.id, graphData) : null;
   const callTree = node.node_type === "Function"
     ? buildCallTree(node.id, graphData, MAX_CALL_LEVELS, new Set([node.id]))
     : [];
@@ -93,7 +104,10 @@ export default function NodeSidePanel({ node, graphData, onClose, onBlastRadius,
           )}
           {node.framework_role && <Property label="Framework Role" value={node.framework_role} />}
           {node.value != null && <Property label="Value" value={node.value} mono />}
+          {node.is_test && <Property label="Kind" value="test file" />}
           {node.cluster_id && <Property label="Cluster" value={node.cluster_id} />}
+          {moduleStats && <Property label="Classes" value={moduleStats.classCount} />}
+          {moduleStats && <Property label="Files" value={moduleStats.fileCount} />}
         </Section>
 
         {/* Ancestry */}

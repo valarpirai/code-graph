@@ -25,6 +25,8 @@ class RDFBuilder:
             g.add((file_uri, RDF.type, CG.File))
             g.add((file_uri, CG.filePath, Literal(pf.file_path)))
             g.add((file_uri, CG.language, Literal(pf.language)))
+            if pf.is_test:
+                g.add((file_uri, CG.isTest, Literal(True, datatype=XSD.boolean)))
             # Connect package → file and package → class
             if pf.package and pf.package in package_uris:
                 pkg_uri = package_uris[pf.package]

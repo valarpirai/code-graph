@@ -8,6 +8,7 @@ export interface FilterState {
   visibleNodeTypes: Set<NodeType>;
   visibleEdgeRelations: Set<EdgeRelation>;
   showClusters: boolean;
+  showTestFiles: boolean;
 }
 
 export function defaultFilterState(): FilterState {
@@ -16,6 +17,7 @@ export function defaultFilterState(): FilterState {
     visibleNodeTypes: new Set<NodeType>(["File", "Class", "Function", "Variable", "Module"]),
     visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS),
     showClusters: false,
+    showTestFiles: true,
   };
 }
 
@@ -47,6 +49,10 @@ export default function FilterPanel({ filters, onChange }: Props) {
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={filters.showClusters} onChange={() => onChange({ ...filters, showClusters: !filters.showClusters })} className="accent-accent-blue" />
         <span className="text-gray-300">Cluster colour overlay</span>
+      </label>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" checked={filters.showTestFiles} onChange={() => onChange({ ...filters, showTestFiles: !filters.showTestFiles })} className="accent-accent-blue" />
+        <span className="text-gray-300">Show test files</span>
       </label>
     </div>
   );

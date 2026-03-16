@@ -79,7 +79,11 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
 
   useEffect(() => {
     if (!cy) return;
-    cy.nodes().forEach((n) => { const show = filters.visibleNodeTypes.has(n.data("node_type")); n.style("display", show ? "element" : "none"); });
+    cy.nodes().forEach((n) => {
+      const typeVisible = filters.visibleNodeTypes.has(n.data("node_type"));
+      const testVisible = filters.showTestFiles || !n.data("is_test");
+      n.style("display", typeVisible && testVisible ? "element" : "none");
+    });
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters]);
 

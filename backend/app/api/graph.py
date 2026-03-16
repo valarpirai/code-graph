@@ -74,6 +74,7 @@ def get_graph(project_id: str):
             ("framework_role",   _str(CG.frameworkRole)),
             ("value",            _str(CG.value)),
             ("class_kind",       _str(CG.classKind)),
+            ("is_test",          _bool(CG.isTest)),
         ]:
             if val is not None and val != "" and val is not False:
                 data[key] = val

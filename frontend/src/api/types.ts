@@ -54,6 +54,7 @@ export interface GraphNodeData {
   framework_role?: string;
   value?: string;
   class_kind?: string;
+  is_test?: boolean;
   cluster_id?: string;
   [key: string]: unknown;
 }

@@ -128,3 +128,7 @@ cg:value a owl:DatatypeProperty ;
 cg:classKind a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
     rdfs:label "classKind" .
+
+cg:isTest a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "isTest" .

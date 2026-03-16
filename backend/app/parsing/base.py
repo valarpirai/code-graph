@@ -76,6 +76,7 @@ class ParsedFile:
     constants: list[ConstantDef]
     config_values: list[ConfigValue]
     package: str = ""                  # package / namespace (e.g. "com.example.servlet")
+    is_test: bool = False              # True if this is a test/spec file
 
 
 class BaseParser(ABC):

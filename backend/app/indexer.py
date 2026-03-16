@@ -1,5 +1,16 @@
 from pathlib import Path
 from .parsing import get_parser
+
+
+def _is_test_path(file_path: str) -> bool:
+    p = file_path.replace("\\", "/").lower()
+    stem = p.rsplit("/", 1)[-1]
+    return (
+        "/test/" in p or "/tests/" in p or "/test_" in p
+        or stem.startswith("test_") or stem.endswith("test.java")
+        or stem.endswith("tests.java") or stem.endswith("spec.java")
+        or stem.endswith("it.java")
+    )
 from .parsing.config_parsers import parse_config_file
 from .parsing.entry_point_scorer import score_entry_point
 from .rdf.builder import RDFBuilder
@@ -17,6 +28,7 @@ class Indexer:
                 try:
                     source = path.read_text(errors="replace")
                     pf = parser.parse(str(path.relative_to(source_dir)), source)
+                    pf.is_test = _is_test_path(pf.file_path)
                     parsed_files.append(pf)
                 except Exception:
                     pass  # skip unparseable files

@@ -116,4 +116,12 @@ export const baseStylesheet: Stylesheet[] = [
     selector: ".faded",
     style: { opacity: 0.1 },
   },
+  {
+    selector: "node[?is_test]",
+    style: {
+      "border-width": 2,
+      "border-color": "#f0883e",
+      "border-style": "dashed",
+    },
+  },
 ];
