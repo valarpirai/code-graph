@@ -44,6 +44,7 @@ class FunctionDef:
     is_exported: bool
     framework_role: Optional[str]
     entry_point_score: float
+    is_abstract: bool = False
     calls: list[str] = field(default_factory=list)  # qualified names of callees
 
 

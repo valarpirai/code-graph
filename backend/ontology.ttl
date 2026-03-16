@@ -136,3 +136,7 @@ cg:isTest a owl:DatatypeProperty ;
 cg:varKind a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
     rdfs:label "varKind" .
+
+cg:isAbstract a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "isAbstract" .

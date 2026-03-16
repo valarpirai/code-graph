@@ -75,6 +75,7 @@ def get_graph(project_id: str):
             ("value",            _str(CG.value)),
             ("class_kind",       _str(CG.classKind)),
             ("is_test",          _bool(CG.isTest)),
+            ("is_abstract",      _bool(CG.isAbstract)),
             ("var_kind",         _str(CG.varKind)),
         ]:
             if val is not None and val != "" and val is not False:

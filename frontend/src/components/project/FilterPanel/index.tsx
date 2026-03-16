@@ -4,22 +4,26 @@ import { NODE_COLORS, EDGE_COLORS } from "../GraphView/cytoscapeConfig";
 const ALL_NODE_TYPES: NodeType[] = ["File", "Class", "Function", "Variable", "ExternalSymbol", "Module"];
 const ALL_EDGE_RELATIONS: EdgeRelation[] = ["calls", "imports", "inherits", "contains", "containsFile", "containsClass", "defines", "uses", "hasMethod", "hasField"];
 
+export const ALL_VISIBILITIES = ["public", "protected", "private", "abstract"] as const;
+export const ALL_VAR_KINDS = ["constant", "static", "final", "instance", "local"] as const;
+
 export interface FilterState {
   visibleNodeTypes: Set<NodeType>;
   visibleEdgeRelations: Set<EdgeRelation>;
   showClusters: boolean;
   showTestFiles: boolean;
-  showLocalVars: boolean;
+  hiddenVisibilities: Set<string>;
+  hiddenVarKinds: Set<string>;
 }
 
 export function defaultFilterState(): FilterState {
   return {
-    // ExternalSymbol nodes are very numerous and noisy — hidden by default
     visibleNodeTypes: new Set<NodeType>(["File", "Class", "Function", "Variable", "Module"]),
     visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS.filter((r) => r !== "calls")),
     showClusters: false,
     showTestFiles: true,
-    showLocalVars: false,  // local variables are too numerous by default
+    hiddenVisibilities: new Set(),
+    hiddenVarKinds: new Set(["local"]),
   };
 }
 
@@ -36,6 +40,17 @@ export default function FilterPanel({ filters, onChange }: Props) {
     next.has(r) ? next.delete(r) : next.add(r);
     onChange({ ...filters, visibleEdgeRelations: next });
   };
+  const toggleVisibility = (v: string) => {
+    const next = new Set(filters.hiddenVisibilities);
+    next.has(v) ? next.delete(v) : next.add(v);
+    onChange({ ...filters, hiddenVisibilities: next });
+  };
+  const toggleVarKind = (k: string) => {
+    const next = new Set(filters.hiddenVarKinds);
+    next.has(k) ? next.delete(k) : next.add(k);
+    onChange({ ...filters, hiddenVarKinds: next });
+  };
+
   return (
     <div className="card p-4 flex flex-col gap-4 text-xs">
       <Section label="Node Types">
@@ -48,6 +63,16 @@ export default function FilterPanel({ filters, onChange }: Props) {
           <CheckRow key={r} label={r} color={EDGE_COLORS[r]} checked={filters.visibleEdgeRelations.has(r)} onChange={() => toggleEdge(r)} />
         ))}
       </Section>
+      <Section label="Method Visibility">
+        {ALL_VISIBILITIES.map((v) => (
+          <CheckRow key={v} label={v} checked={!filters.hiddenVisibilities.has(v)} onChange={() => toggleVisibility(v)} />
+        ))}
+      </Section>
+      <Section label="Variable Kind">
+        {ALL_VAR_KINDS.map((k) => (
+          <CheckRow key={k} label={k} checked={!filters.hiddenVarKinds.has(k)} onChange={() => toggleVarKind(k)} />
+        ))}
+      </Section>
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={filters.showClusters} onChange={() => onChange({ ...filters, showClusters: !filters.showClusters })} className="accent-accent-blue" />
         <span className="text-gray-300">Cluster colour overlay</span>
@@ -55,10 +80,6 @@ export default function FilterPanel({ filters, onChange }: Props) {
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={filters.showTestFiles} onChange={() => onChange({ ...filters, showTestFiles: !filters.showTestFiles })} className="accent-accent-blue" />
         <span className="text-gray-300">Show test files</span>
-      </label>
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" checked={filters.showLocalVars} onChange={() => onChange({ ...filters, showLocalVars: !filters.showLocalVars })} className="accent-accent-blue" />
-        <span className="text-gray-300">Show local variables</span>
       </label>
     </div>
   );
@@ -73,11 +94,11 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function CheckRow({ label, color, checked, onChange }: { label: string; color: string; checked: boolean; onChange: () => void }) {
+function CheckRow({ label, color, checked, onChange }: { label: string; color?: string; checked: boolean; onChange: () => void }) {
   return (
     <label className="flex items-center gap-2 cursor-pointer">
       <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent-blue" />
-      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
       <span className="text-gray-300">{label}</span>
     </label>
   );

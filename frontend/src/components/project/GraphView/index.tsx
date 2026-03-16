@@ -82,8 +82,12 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     cy.nodes().forEach((n) => {
       const typeVisible = filters.visibleNodeTypes.has(n.data("node_type"));
       const testVisible = filters.showTestFiles || !n.data("is_test");
-      const localVarVisible = filters.showLocalVars || n.data("var_kind") !== "local";
-      n.style("display", typeVisible && testVisible && localVarVisible ? "element" : "none");
+      const varKindVisible = n.data("node_type") !== "Variable" || !filters.hiddenVarKinds.has(n.data("var_kind"));
+      const visibilityVisible = n.data("node_type") !== "Function" || (
+        !filters.hiddenVisibilities.has(n.data("visibility") as string) &&
+        !(n.data("is_abstract") && filters.hiddenVisibilities.has("abstract"))
+      );
+      n.style("display", typeVisible && testVisible && varKindVisible && visibilityVisible ? "element" : "none");
     });
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters]);

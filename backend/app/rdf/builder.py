@@ -70,6 +70,8 @@ class RDFBuilder:
         g.add((uri, CG.visibility, Literal(fn.visibility)))
         g.add((uri, CG.isExported, Literal(fn.is_exported, datatype=XSD.boolean)))
         g.add((uri, CG.entryPointScore, Literal(fn.entry_point_score, datatype=XSD.float)))
+        if fn.is_abstract:
+            g.add((uri, CG.isAbstract, Literal(True, datatype=XSD.boolean)))
         if fn.framework_role:
             g.add((uri, CG.frameworkRole, Literal(fn.framework_role)))
         if owner:

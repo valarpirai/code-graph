@@ -56,6 +56,7 @@ export interface GraphNodeData {
   value?: string;
   class_kind?: string;
   is_test?: boolean;
+  is_abstract?: boolean;
   var_kind?: string;
   cluster_id?: string;
   [key: string]: unknown;

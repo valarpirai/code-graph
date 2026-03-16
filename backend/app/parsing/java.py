@@ -120,6 +120,7 @@ class JavaParser(BaseParser):
                 visibility="public" if "public" in modifiers else
                            "protected" if "protected" in modifiers else "private",
                 is_exported="public" in modifiers,
+                is_abstract="abstract" in modifiers,
                 framework_role=framework_role,
                 entry_point_score=0.0,
                 calls=calls,
