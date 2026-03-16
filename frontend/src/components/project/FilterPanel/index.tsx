@@ -31,7 +31,6 @@ export function defaultFilterState(): FilterState {
       "Class", "AbstractClass", "DataClass", "Interface", "Trait", "Enum", "Struct", "Mixin",
       "Function", "Method", "Constructor",
       "Field", "Constant",
-      "ExternalSymbol",
     ]),
     visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS.filter((r) => r !== "calls")),
     showClusters: false,
