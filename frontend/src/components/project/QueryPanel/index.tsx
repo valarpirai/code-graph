@@ -3,28 +3,37 @@ import { useMutation } from "@tanstack/react-query";
 import { runSparql } from "../../../api/client";
 import type { SparqlResult } from "../../../api/types";
 
+const NS = "http://codegraph.dev/ontology#";
+
 const EXAMPLE_QUERIES = [
   {
-    label: "List all functions",
-    query: `PREFIX cg: <http://code-graph.dev/ontology#>
-SELECT ?uri ?label WHERE {
-  ?uri a cg:Function ;
-       rdfs:label ?label .
+    label: "All functions",
+    query: `PREFIX cg: <${NS}>
+SELECT ?name ?visibility ?line WHERE {
+  ?fn a cg:Function ;
+      cg:name ?name ;
+      cg:visibility ?visibility ;
+      cg:line ?line .
+} ORDER BY ?name LIMIT 50`,
+  },
+  {
+    label: "Call graph",
+    query: `PREFIX cg: <${NS}>
+SELECT ?callerName ?calleeName WHERE {
+  ?caller cg:calls ?callee ;
+          cg:name ?callerName .
+  ?callee cg:name ?calleeName .
 } LIMIT 50`,
   },
   {
-    label: "Direct callers of a function",
-    query: `PREFIX cg: <http://code-graph.dev/ontology#>
-SELECT ?caller ?callee WHERE {
-  ?caller cg:calls ?callee .
-} LIMIT 50`,
-  },
-  {
-    label: "Files imported by module",
-    query: `PREFIX cg: <http://code-graph.dev/ontology#>
-SELECT ?file ?imported WHERE {
-  ?file cg:imports ?imported .
-} LIMIT 50`,
+    label: "Classes per package",
+    query: `PREFIX cg: <${NS}>
+SELECT ?package ?className WHERE {
+  ?pkg a cg:Module ;
+       cg:name ?package ;
+       cg:containsClass ?cls .
+  ?cls cg:name ?className .
+} ORDER BY ?package LIMIT 50`,
   },
 ];
 

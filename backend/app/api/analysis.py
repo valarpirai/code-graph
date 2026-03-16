@@ -76,9 +76,14 @@ def sparql_query(project_id: str, body: SparqlRequest):
             status_code=422,
             content={"error": "sparql_error", "message": str(exc)},
         )
-    columns = [str(v) for v in results.vars] if results.vars else []
-    rows = [
-        [str(cell) if cell is not None else None for cell in row]
-        for row in results
-    ]
-    return {"columns": columns, "rows": rows}
+    variables = [str(v) for v in results.vars] if results.vars else []
+    bindings = []
+    for row in results:
+        binding: dict = {}
+        for var, cell in zip(variables, row):
+            if cell is not None:
+                from rdflib import URIRef, Literal
+                cell_type = "uri" if isinstance(cell, URIRef) else "literal"
+                binding[var] = {"type": cell_type, "value": str(cell)}
+        bindings.append(binding)
+    return {"variables": variables, "results": {"bindings": bindings}}
