@@ -29,6 +29,9 @@ app.include_router(graph_router)
 from app.api.analysis import router as analysis_router
 app.include_router(analysis_router)
 
+from app.api.wiki import router as wiki_router
+app.include_router(wiki_router)
+
 from fastapi import WebSocket, WebSocketDisconnect
 from app.ws.indexing import notifier
 
