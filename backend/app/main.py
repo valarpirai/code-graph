@@ -18,3 +18,7 @@ app.add_middleware(
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+from app.api.projects import router as projects_router
+app.include_router(projects_router)
