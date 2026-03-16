@@ -46,6 +46,20 @@ class PythonParser(BaseParser):
             for child in arg_list.children:
                 if child.type == "identifier":
                     inherits.append(child.text.decode())
+        # Determine class_kind from base classes and decorators
+        _ENUM_BASES = {"Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"}
+        _ABC_BASES = {"ABC", "ABCMeta"}
+        _PROTOCOL_BASES = {"Protocol"}
+        if any(b in _ENUM_BASES for b in inherits):
+            kind = "enum"
+        elif any(b in _ABC_BASES for b in inherits):
+            kind = "abstract_class"
+        elif any(b in _PROTOCOL_BASES for b in inherits):
+            kind = "interface"
+        elif self._has_decorator(node, "dataclass"):
+            kind = "data_class"
+        else:
+            kind = "class"
         # Extract methods and class-level constants from the block
         block = self._find_child(node, "block")
         methods = []
@@ -62,8 +76,23 @@ class PythonParser(BaseParser):
             fields=[],
             methods=methods,
             is_exported=not name.startswith("_"),
+            class_kind=kind,
         )
         return cls, constants
+
+    def _has_decorator(self, class_node, decorator_name: str) -> bool:
+        """Check if a class node has a specific decorator."""
+        current = class_node.prev_sibling
+        while current is not None and current.type == "decorator":
+            for child in current.children:
+                if child.type == "identifier" and child.text.decode() == decorator_name:
+                    return True
+                if child.type == "call":
+                    fn = child.children[0] if child.children else None
+                    if fn and fn.type == "identifier" and fn.text.decode() == decorator_name:
+                        return True
+            current = current.prev_sibling
+        return False
 
     def _extract_methods(self, block_node, class_name: str) -> list[FunctionDef]:
         methods = []

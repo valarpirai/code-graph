@@ -41,6 +41,40 @@ class KotlinParser(BaseParser):
         for node in self._walk(root, "class_declaration"):
             name = self._child_text(node, "identifier") or ""
             qname = f"{package}.{name}" if package else name
+            modifiers = self._get_modifiers(node)
+            methods = self._extract_methods(node, qname)
+            # Determine class_kind from modifiers and class body presence
+            if "interface" in modifiers:
+                kind = "interface"
+            elif "enum" in modifiers:
+                kind = "enum"
+            elif "data" in modifiers:
+                kind = "data_class"
+            elif "abstract" in modifiers:
+                kind = "abstract_class"
+            else:
+                kind = "class"
+            # Kotlin interfaces: tree-sitter uses class_declaration with "interface" keyword
+            # Check if the node has "interface" as a direct keyword child
+            for child in node.children:
+                if not child.is_named and child.text == b"interface":
+                    kind = "interface"
+                    break
+                if not child.is_named and child.text == b"enum":
+                    kind = "enum"
+                    break
+            classes.append(ClassDef(
+                name=name, qualified_name=qname,
+                line=node.start_point[0] + 1,
+                inherits=[], implements=[],
+                fields=[], methods=methods,
+                is_exported=True,
+                class_kind=kind,
+            ))
+        # object_declaration → singleton class
+        for node in self._walk(root, "object_declaration"):
+            name = self._child_text(node, "identifier") or ""
+            qname = f"{package}.{name}" if package else name
             methods = self._extract_methods(node, qname)
             classes.append(ClassDef(
                 name=name, qualified_name=qname,
@@ -48,8 +82,17 @@ class KotlinParser(BaseParser):
                 inherits=[], implements=[],
                 fields=[], methods=methods,
                 is_exported=True,
+                class_kind="class",
             ))
         return classes
+
+    def _get_modifiers(self, node) -> list[str]:
+        modifiers = []
+        for child in node.children:
+            if child.type == "modifiers":
+                for mod in child.children:
+                    modifiers.append(mod.text.decode())
+        return modifiers
 
     def _extract_methods(self, class_node, class_qname: str) -> list[FunctionDef]:
         methods = []

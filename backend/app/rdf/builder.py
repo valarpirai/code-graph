@@ -1,7 +1,30 @@
 from rdflib import Graph, URIRef, Literal, RDF, XSD
 from urllib.parse import quote
 from .ontology import CG, load_ontology
-from ..parsing.base import ParsedFile, FunctionDef, ClassDef, ImportDef, ConstantDef
+from ..parsing.base import ParsedFile, FunctionDef, ClassDef, FieldDef, ImportDef, ConstantDef
+
+_CLASS_KIND_TO_RDF: dict[str, URIRef] = {
+    "class":          CG.Class,
+    "abstract_class": CG.AbstractClass,
+    "final_class":    CG.Class,       # no distinct FinalClass type; remains a Class
+    "data_class":     CG.DataClass,
+    "interface":      CG.Interface,
+    "enum":           CG.Enum,
+    "struct":         CG.Struct,
+    "trait":          CG.Trait,
+    "mixin":          CG.Mixin,
+}
+
+_VAR_KIND_TO_RDF: dict[str, URIRef] = {
+    "constant": CG.Constant,
+    "final":    CG.Constant,
+    "static":   CG.Field,
+    "instance": CG.Field,
+    "local":    CG.LocalVariable,
+}
+
+# Constructor method name patterns per language
+_CONSTRUCTOR_NAMES = {"__init__", "constructor", "initialize", "init"}
 
 
 def _uri(project_id: str, kind: str, qname: str) -> URIRef:
@@ -45,13 +68,14 @@ class RDFBuilder:
             for imp in pf.imports:
                 self._add_import(g, project_id, file_uri, imp)
             for const in pf.constants:
-                self._add_variable(g, project_id, file_uri, const)
+                self._add_storage(g, project_id, file_uri, const)
         self._add_call_edges(g, project_id, parsed_files)
         return g
 
     def _add_class(self, g, project_id, file_uri, cls: ClassDef):
         uri = _uri(project_id, "class", cls.qualified_name)
-        g.add((uri, RDF.type, CG.Class))
+        rdf_type = _CLASS_KIND_TO_RDF.get(cls.class_kind, CG.Class)
+        g.add((uri, RDF.type, rdf_type))
         g.add((uri, CG.name, Literal(cls.name)))
         g.add((uri, CG.qualifiedName, Literal(cls.qualified_name)))
         g.add((uri, CG.line, Literal(cls.line, datatype=XSD.integer)))
@@ -62,12 +86,31 @@ class RDFBuilder:
             g.add((uri, CG.inherits, _uri(project_id, "class", base)))
         for iface in cls.implements:
             g.add((uri, CG.implements, _uri(project_id, "class", iface)))
+        for field in cls.fields:
+            self._add_field(g, project_id, uri, cls.qualified_name, field)
         for method in cls.methods:
-            self._add_function(g, project_id, file_uri, method, owner=uri)
+            self._add_function(g, project_id, file_uri, method, owner=uri, owner_name=cls.name)
 
-    def _add_function(self, g, project_id, file_uri, fn: FunctionDef, owner=None):
+    def _add_field(self, g, project_id, cls_uri: URIRef, cls_qname: str, field: FieldDef):
+        uri = _uri(project_id, "field", f"{cls_qname}/{field.name}")
+        g.add((uri, RDF.type, CG.Field))
+        g.add((uri, CG.name, Literal(field.name)))
+        g.add((uri, CG.visibility, Literal(field.visibility)))
+        if field.type_hint:
+            g.add((uri, CG.dataType, Literal(field.type_hint)))
+        g.add((cls_uri, CG.hasField, uri))
+
+    def _add_function(self, g, project_id, file_uri, fn: FunctionDef, owner=None, owner_name: str = ""):
         uri = _uri(project_id, "function", fn.qualified_name)
-        g.add((uri, RDF.type, CG.Function))
+        if owner is not None:
+            is_constructor = (
+                fn.name in _CONSTRUCTOR_NAMES or
+                (owner_name and fn.name == owner_name)
+            )
+            rdf_type = CG.Constructor if is_constructor else CG.Method
+        else:
+            rdf_type = CG.Function
+        g.add((uri, RDF.type, rdf_type))
         g.add((uri, CG.name, Literal(fn.name)))
         g.add((uri, CG.qualifiedName, Literal(fn.qualified_name)))
         g.add((uri, CG.line, Literal(fn.line, datatype=XSD.integer)))
@@ -78,22 +121,29 @@ class RDFBuilder:
             g.add((uri, CG.isAbstract, Literal(True, datatype=XSD.boolean)))
         if fn.framework_role:
             g.add((uri, CG.frameworkRole, Literal(fn.framework_role)))
-        if owner:
+        # Parameter nodes
+        for i, param in enumerate(fn.parameters):
+            p_uri = _uri(project_id, "parameter", f"{fn.qualified_name}/param/{i}/{param.name}")
+            g.add((p_uri, RDF.type, CG.Parameter))
+            g.add((p_uri, CG.name, Literal(param.name)))
+            if param.type_hint:
+                g.add((p_uri, CG.dataType, Literal(param.type_hint)))
+            g.add((uri, CG.hasParameter, p_uri))
+        if owner is not None:
             g.add((owner, CG.hasMethod, uri))
         else:
             g.add((file_uri, CG.defines, uri))
 
-    def _add_variable(self, g, project_id, file_uri, const: ConstantDef):
-        # Use owner + name as URI to avoid collisions across files
+    def _add_storage(self, g, project_id, file_uri, const: ConstantDef):
         scope = const.owner_qname or str(file_uri)
-        uri = _uri(project_id, "variable", f"{scope}/{const.name}/{const.line}")
-        g.add((uri, RDF.type, CG.Variable))
+        uri = _uri(project_id, "storage", f"{scope}/{const.name}/{const.line}")
+        rdf_type = _VAR_KIND_TO_RDF.get(const.var_kind, CG.Constant)
+        g.add((uri, RDF.type, rdf_type))
         g.add((uri, CG.name, Literal(const.name)))
         g.add((uri, CG.line, Literal(const.line, datatype=XSD.integer)))
-        g.add((uri, CG.varKind, Literal(const.var_kind)))
         if const.value is not None:
             g.add((uri, CG.value, Literal(const.value)))
-        # Link to owner: class field → hasField; local/file-level → defines
+        # Link to owner: class-scoped → hasField; file-level/local → defines
         if const.owner_qname and const.var_kind in ("instance", "static", "constant", "final"):
             owner_uri = _uri(project_id, "class", const.owner_qname)
             g.add((owner_uri, CG.hasField, uri))

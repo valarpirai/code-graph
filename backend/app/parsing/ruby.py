@@ -25,6 +25,17 @@ class RubyParser(BaseParser):
             imports=imports, constants=[], config_values=[],
         )
 
+    def _is_mixin_module(self, body_node) -> bool:
+        """Return True if a module body has methods but no nested classes — treat as mixin."""
+        has_methods = False
+        has_classes = False
+        for child in body_node.children:
+            if child.type == "method":
+                has_methods = True
+            elif child.type in ("class", "module"):
+                has_classes = True
+        return has_methods and not has_classes
+
     def _extract_classes(self, node, namespace: list[str],
                          classes: list[ClassDef], functions: list[FunctionDef]):
         for child in node.children:
@@ -32,7 +43,18 @@ class RubyParser(BaseParser):
                 mod_name = self._child_text(child, "constant") or ""
                 new_ns = namespace + [mod_name]
                 body = self._find_child(child, "body_statement")
-                if body:
+                if body and self._is_mixin_module(body):
+                    qname = "::".join(new_ns)
+                    methods = self._extract_methods(body, qname)
+                    classes.append(ClassDef(
+                        name=mod_name, qualified_name=qname,
+                        line=child.start_point[0] + 1,
+                        inherits=[], implements=[],
+                        fields=[], methods=methods,
+                        is_exported=True,
+                        class_kind="mixin",
+                    ))
+                elif body:
                     self._extract_classes(body, new_ns, classes, functions)
             elif child.type == "class":
                 cls_name = self._child_text(child, "constant") or ""

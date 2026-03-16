@@ -8,17 +8,91 @@
     a owl:Ontology ;
     rdfs:label "Code Graph Ontology" .
 
-# ── Classes ──────────────────────────────────────────────────────────────────
+# ── Infrastructure classes ────────────────────────────────────────────────────
 
-cg:File a owl:Class ; rdfs:label "File" .
-cg:Class a owl:Class ; rdfs:label "Class" .
-cg:Function a owl:Class ; rdfs:label "Function" .
-cg:Import a owl:Class ; rdfs:label "Import" .
-cg:Constant a owl:Class ; rdfs:label "Constant" .
-cg:Variable a owl:Class ; rdfs:label "Variable" .
-cg:Module a owl:Class ; rdfs:label "Module" .
+cg:File        a owl:Class ; rdfs:label "File" .
+cg:Module      a owl:Class ; rdfs:label "Module" .
+cg:Import      a owl:Class ; rdfs:label "Import" .
 cg:ConfigValue a owl:Class ; rdfs:label "ConfigValue" .
 cg:ExternalSymbol a owl:Class ; rdfs:label "ExternalSymbol" .
+
+# ── TypeDefinition hierarchy ──────────────────────────────────────────────────
+# Abstract superclass for all class-like constructs.
+# rdflib SPARQL does not do subclass inference, so queries enumerate subtypes
+# explicitly using VALUES clauses rather than querying cg:TypeDefinition directly.
+
+cg:TypeDefinition a owl:Class ;
+    rdfs:label "TypeDefinition" .
+
+cg:Class a owl:Class ;
+    rdfs:subClassOf cg:TypeDefinition ;
+    rdfs:label "Class" .
+
+cg:AbstractClass a owl:Class ;
+    rdfs:subClassOf cg:Class ;
+    rdfs:label "AbstractClass" .
+
+cg:DataClass a owl:Class ;
+    rdfs:subClassOf cg:Class ;
+    rdfs:label "DataClass" .
+
+cg:Interface a owl:Class ;
+    rdfs:subClassOf cg:TypeDefinition ;
+    rdfs:label "Interface" .
+
+cg:Trait a owl:Class ;
+    rdfs:subClassOf cg:TypeDefinition ;
+    rdfs:label "Trait" .
+
+cg:Enum a owl:Class ;
+    rdfs:subClassOf cg:TypeDefinition ;
+    rdfs:label "Enum" .
+
+cg:Struct a owl:Class ;
+    rdfs:subClassOf cg:TypeDefinition ;
+    rdfs:label "Struct" .
+
+cg:Mixin a owl:Class ;
+    rdfs:subClassOf cg:TypeDefinition ;
+    rdfs:label "Mixin" .
+
+# ── Callable hierarchy ────────────────────────────────────────────────────────
+
+cg:Callable a owl:Class ;
+    rdfs:label "Callable" .
+
+cg:Function a owl:Class ;
+    rdfs:subClassOf cg:Callable ;
+    rdfs:label "Function" .
+
+cg:Method a owl:Class ;
+    rdfs:subClassOf cg:Callable ;
+    rdfs:label "Method" .
+
+cg:Constructor a owl:Class ;
+    rdfs:subClassOf cg:Method ;
+    rdfs:label "Constructor" .
+
+# ── StorageNode hierarchy ─────────────────────────────────────────────────────
+
+cg:StorageNode a owl:Class ;
+    rdfs:label "StorageNode" .
+
+cg:Field a owl:Class ;
+    rdfs:subClassOf cg:StorageNode ;
+    rdfs:label "Field" .
+
+cg:Parameter a owl:Class ;
+    rdfs:subClassOf cg:StorageNode ;
+    rdfs:label "Parameter" .
+
+cg:LocalVariable a owl:Class ;
+    rdfs:subClassOf cg:StorageNode ;
+    rdfs:label "LocalVariable" .
+
+cg:Constant a owl:Class ;
+    rdfs:subClassOf cg:StorageNode ;
+    rdfs:label "Constant" .
 
 # ── Object Properties ────────────────────────────────────────────────────────
 
@@ -28,7 +102,7 @@ cg:defines a owl:ObjectProperty ;
     rdfs:label "defines" .
 
 cg:calls a owl:ObjectProperty ;
-    rdfs:domain cg:Function ;
+    rdfs:domain cg:Callable ;
     rdfs:range owl:Thing ;
     rdfs:label "calls" .
 
@@ -38,24 +112,34 @@ cg:imports a owl:ObjectProperty ;
     rdfs:label "imports" .
 
 cg:inherits a owl:ObjectProperty ;
-    rdfs:domain cg:Class ;
-    rdfs:range cg:Class ;
+    rdfs:domain cg:TypeDefinition ;
+    rdfs:range cg:TypeDefinition ;
     rdfs:label "inherits" .
 
 cg:implements a owl:ObjectProperty ;
-    rdfs:domain cg:Class ;
-    rdfs:range cg:Class ;
+    rdfs:domain cg:TypeDefinition ;
+    rdfs:range cg:Interface ;
     rdfs:label "implements" .
 
+cg:mixes a owl:ObjectProperty ;
+    rdfs:domain cg:TypeDefinition ;
+    rdfs:range cg:Mixin ;
+    rdfs:label "mixes" .
+
 cg:hasField a owl:ObjectProperty ;
-    rdfs:domain cg:Class ;
-    rdfs:range owl:Thing ;
+    rdfs:domain cg:TypeDefinition ;
+    rdfs:range cg:Field ;
     rdfs:label "hasField" .
 
 cg:hasMethod a owl:ObjectProperty ;
-    rdfs:domain cg:Class ;
-    rdfs:range cg:Function ;
+    rdfs:domain cg:TypeDefinition ;
+    rdfs:range cg:Callable ;
     rdfs:label "hasMethod" .
+
+cg:hasParameter a owl:ObjectProperty ;
+    rdfs:domain cg:Callable ;
+    rdfs:range cg:Parameter ;
+    rdfs:label "hasParameter" .
 
 cg:contains a owl:ObjectProperty ;
     rdfs:domain cg:Module ;
@@ -71,7 +155,7 @@ cg:containsFile a owl:ObjectProperty ;
 cg:containsClass a owl:ObjectProperty ;
     rdfs:subPropertyOf cg:contains ;
     rdfs:domain cg:Module ;
-    rdfs:range cg:Class ;
+    rdfs:range cg:TypeDefinition ;
     rdfs:label "containsClass" .
 
 cg:dependsOn a owl:ObjectProperty ;
@@ -129,13 +213,17 @@ cg:classKind a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
     rdfs:label "classKind" .
 
+cg:dataType a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "dataType" .
+
+cg:returnType a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "returnType" .
+
 cg:isTest a owl:DatatypeProperty ;
     rdfs:range xsd:boolean ;
     rdfs:label "isTest" .
-
-cg:varKind a owl:DatatypeProperty ;
-    rdfs:range xsd:string ;
-    rdfs:label "varKind" .
 
 cg:isAbstract a owl:DatatypeProperty ;
     rdfs:range xsd:boolean ;

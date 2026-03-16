@@ -26,27 +26,43 @@ class CParser(BaseParser):
 
     def _extract_structs(self, root) -> list[ClassDef]:
         classes = []
-        for node in self._walk(root, "struct_specifier"):
+        # struct_specifier and union_specifier both map to "struct"
+        for node_type in ("struct_specifier", "union_specifier"):
+            for node in self._walk(root, node_type):
+                name = self._child_text(node, "type_identifier") or ""
+                if not name:
+                    continue
+                fields = []
+                fdl = self._find_child(node, "field_declaration_list")
+                if fdl:
+                    for fd in fdl.children:
+                        if fd.type == "field_declaration":
+                            type_hint = self._child_text(fd, "primitive_type") or self._child_text(fd, "type_identifier")
+                            field_name = self._child_text(fd, "field_identifier") or ""
+                            if field_name:
+                                fields.append(FieldDef(
+                                    name=field_name, type_hint=type_hint, visibility="public",
+                                ))
+                classes.append(ClassDef(
+                    name=name, qualified_name=name,
+                    line=node.start_point[0] + 1,
+                    inherits=[], implements=[],
+                    fields=fields, methods=[],
+                    is_exported=True,
+                    class_kind="struct",
+                ))
+        # enum_specifier → "enum"
+        for node in self._walk(root, "enum_specifier"):
             name = self._child_text(node, "type_identifier") or ""
             if not name:
                 continue
-            fields = []
-            fdl = self._find_child(node, "field_declaration_list")
-            if fdl:
-                for fd in fdl.children:
-                    if fd.type == "field_declaration":
-                        type_hint = self._child_text(fd, "primitive_type") or self._child_text(fd, "type_identifier")
-                        field_name = self._child_text(fd, "field_identifier") or ""
-                        if field_name:
-                            fields.append(FieldDef(
-                                name=field_name, type_hint=type_hint, visibility="public",
-                            ))
             classes.append(ClassDef(
                 name=name, qualified_name=name,
                 line=node.start_point[0] + 1,
                 inherits=[], implements=[],
-                fields=fields, methods=[],
+                fields=[], methods=[],
                 is_exported=True,
+                class_kind="enum",
             ))
         return classes
 

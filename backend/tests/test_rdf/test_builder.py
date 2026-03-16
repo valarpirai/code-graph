@@ -43,7 +43,8 @@ def test_class_triple_added():
 def test_function_triple_added():
     g = RDFBuilder().build("proj1", [make_parsed_file()])
     fn_uri = _uri("proj1", "function", "com.example.Foo.bar")
-    assert (fn_uri, RDF.type, CG.Function) in g
+    # bar is a method owned by Foo → CG.Method, not CG.Function
+    assert (fn_uri, RDF.type, CG.Method) in g
 
 
 def test_call_edge_to_external():

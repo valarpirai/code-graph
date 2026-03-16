@@ -4,13 +4,19 @@ import type { GraphNodeData, NodeType } from "../../../api/types";
 
 interface TreeNode { data: GraphNodeData; children: TreeNode[]; }
 
-const HIERARCHY_ORDER: NodeType[] = ["Module", "File", "Class", "Function", "Variable"];
+const HIERARCHY_ORDER: NodeType[] = [
+  "Module", "File",
+  "Class", "AbstractClass", "DataClass", "Interface", "Trait", "Enum", "Struct", "Mixin",
+  "Function", "Method", "Constructor",
+  "Field", "Constant", "Parameter", "LocalVariable",
+  "ExternalSymbol",
+];
 
 function buildTree(nodes: GraphNodeData[], edges: Array<{ data: { source: string; target: string; relation: string } }>): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>(nodes.map((n) => [n.id, { data: n, children: [] }]));
   const childSet = new Set<string>();
   edges.forEach(({ data: e }) => {
-    if (e.relation === "contains") {
+    if (e.relation === "contains" || e.relation === "containsFile" || e.relation === "containsClass") {
       const parent = nodeMap.get(e.source);
       const child = nodeMap.get(e.target);
       if (parent && child) { parent.children.push(child); childSet.add(e.target); }
@@ -57,6 +63,11 @@ function TreeItem({ node, depth, onSelect }: { node: TreeNode; depth: number; on
 }
 
 function NodeTypeIcon({ type }: { type: NodeType }) {
-  const icons: Record<NodeType, string> = { Module: "◈", File: "◻", Class: "◆", Function: "ƒ", Variable: "·", ExternalSymbol: "⬡" };
+  const icons: Partial<Record<NodeType, string>> = {
+    Module: "◈", File: "◻", ExternalSymbol: "⬡",
+    Class: "◆", AbstractClass: "◇", DataClass: "▣", Interface: "◎", Trait: "◑", Enum: "≡", Struct: "▤", Mixin: "⊕",
+    Function: "ƒ", Method: "ƒ", Constructor: "⊙",
+    Field: "·", Constant: "#", Parameter: "p", LocalVariable: "v",
+  };
   return <span className="text-xs w-3 shrink-0 text-center select-none opacity-60">{icons[type] ?? "·"}</span>;
 }

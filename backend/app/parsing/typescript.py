@@ -32,21 +32,92 @@ class TypeScriptParser(BaseParser):
             fields = self._extract_fields(node)
             methods = self._extract_methods(node, name)
             inherits = []
-            # heritage: extends
+            implements = []
+            # heritage: extends / implements
             hc = self._find_child(node, "class_heritage")
             if hc:
                 for ext in self._walk(hc, "extends_clause"):
                     tid = self._child_text(ext, "type_identifier") or self._child_text(ext, "identifier")
                     if tid:
                         inherits.append(tid)
+                for impl in self._walk(hc, "implements_clause"):
+                    for tid_node in self._walk(impl, "type_identifier"):
+                        implements.append(tid_node.text.decode())
+            # detect abstract modifier
+            kind = "class"
+            for child in node.children:
+                if child.type == "abstract" or (not child.is_named and child.text == b"abstract"):
+                    kind = "abstract_class"
+                    break
+            # also check parent export_statement for abstract keyword
+            if kind == "class" and node.parent and node.parent.type == "export_statement":
+                for child in node.parent.children:
+                    if not child.is_named and child.text == b"abstract":
+                        kind = "abstract_class"
+                        break
+            classes.append(ClassDef(
+                name=name, qualified_name=name,
+                line=node.start_point[0] + 1,
+                inherits=inherits, implements=implements,
+                fields=fields, methods=methods,
+                is_exported=is_exported,
+                class_kind=kind,
+            ))
+        # interface_declaration
+        for node in self._walk(root, "interface_declaration"):
+            name = self._child_text(node, "type_identifier") or ""
+            is_exported = self._is_exported(node)
+            methods = self._extract_interface_methods(node, name)
+            inherits = []
+            ext_clause = self._find_child(node, "extends_type_clause")
+            if ext_clause:
+                for tid_node in self._walk(ext_clause, "type_identifier"):
+                    inherits.append(tid_node.text.decode())
             classes.append(ClassDef(
                 name=name, qualified_name=name,
                 line=node.start_point[0] + 1,
                 inherits=inherits, implements=[],
-                fields=fields, methods=methods,
+                fields=[], methods=methods,
                 is_exported=is_exported,
+                class_kind="interface",
+            ))
+        # enum_declaration
+        for node in self._walk(root, "enum_declaration"):
+            name = self._child_text(node, "identifier") or ""
+            is_exported = self._is_exported(node)
+            classes.append(ClassDef(
+                name=name, qualified_name=name,
+                line=node.start_point[0] + 1,
+                inherits=[], implements=[],
+                fields=[], methods=[],
+                is_exported=is_exported,
+                class_kind="enum",
             ))
         return classes
+
+    def _extract_interface_methods(self, interface_node, interface_name: str) -> list[FunctionDef]:
+        methods = []
+        body = self._find_child(interface_node, "interface_body")
+        if not body:
+            return methods
+        for node in body.children:
+            if node.type == "method_signature":
+                name = self._child_text(node, "property_identifier") or ""
+                params = self._extract_params(node)
+                methods.append(FunctionDef(
+                    name=name,
+                    qualified_name=f"{interface_name}.{name}",
+                    line=node.start_point[0] + 1,
+                    column=node.start_point[1],
+                    parameters=params,
+                    visibility="public",
+                    is_exported=False,
+                    is_abstract=True,
+                    framework_role=None,
+                    entry_point_score=0.0,
+                    calls=[],
+                ))
+        return methods
 
     def _extract_fields(self, class_node) -> list[FieldDef]:
         fields = []

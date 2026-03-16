@@ -88,6 +88,38 @@ class JavaParser(BaseParser):
                 is_exported="public" in modifiers,
                 class_kind="interface",
             ))
+        # enum_declaration
+        for node in self._walk(root, "enum_declaration"):
+            name = self._child_text(node, "identifier")
+            qname = f"{package}.{name}" if package else name
+            modifiers = self._get_modifiers(node)
+            methods = self._extract_methods(node, qname)
+            interfaces = self._extract_interface_list(node)
+            classes.append(ClassDef(
+                name=name, qualified_name=qname,
+                line=node.start_point[0] + 1,
+                inherits=[],
+                implements=interfaces,
+                fields=[], methods=methods,
+                is_exported="public" in modifiers,
+                class_kind="enum",
+            ))
+        # record_declaration (Java 16+)
+        for node in self._walk(root, "record_declaration"):
+            name = self._child_text(node, "identifier")
+            qname = f"{package}.{name}" if package else name
+            modifiers = self._get_modifiers(node)
+            methods = self._extract_methods(node, qname)
+            interfaces = self._extract_interface_list(node)
+            classes.append(ClassDef(
+                name=name, qualified_name=qname,
+                line=node.start_point[0] + 1,
+                inherits=[],
+                implements=interfaces,
+                fields=[], methods=methods,
+                is_exported="public" in modifiers,
+                class_kind="data_class",
+            ))
         return classes
 
     def _extract_extends_interfaces(self, interface_node) -> list[str]:

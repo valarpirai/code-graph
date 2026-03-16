@@ -16,7 +16,8 @@ class GoParser(BaseParser):
         tree = self._parser.parse(source_code.encode())
         root = tree.root_node
         functions, receiver_methods = self._extract_functions(root)
-        classes = self._build_classes(receiver_methods)
+        type_defs = self._extract_type_declarations(root)
+        classes = self._merge_classes(type_defs, receiver_methods)
         imports = self._extract_imports(root)
         return ParsedFile(
             file_path=file_path, language="go",
@@ -96,17 +97,79 @@ class GoParser(BaseParser):
             params.append(ParameterDef(name=name, type_hint=type_hint))
         return params
 
-    def _build_classes(self, receiver_methods: dict[str, list[FunctionDef]]) -> list[ClassDef]:
-        classes = []
+    def _extract_type_declarations(self, root) -> dict[str, ClassDef]:
+        """Walk type_declaration nodes and create ClassDef with correct class_kind."""
+        type_defs: dict[str, ClassDef] = {}
+        for node in root.children:
+            if node.type != "type_declaration":
+                continue
+            for spec in self._walk(node, "type_spec"):
+                name_node = self._find_child(spec, "type_identifier")
+                if not name_node:
+                    continue
+                name = name_node.text.decode()
+                # Determine kind from the type value
+                kind = "struct"
+                for child in spec.children:
+                    if child.type == "interface_type":
+                        kind = "interface"
+                        break
+                    elif child.type == "struct_type":
+                        kind = "struct"
+                        break
+                fields: list[FieldDef] = []
+                if kind == "struct":
+                    fields = self._extract_struct_fields(spec)
+                type_defs[name] = ClassDef(
+                    name=name, qualified_name=name,
+                    line=spec.start_point[0] + 1,
+                    inherits=[], implements=[],
+                    fields=fields, methods=[],
+                    is_exported=name[:1].isupper(),
+                    class_kind=kind,
+                )
+        return type_defs
+
+    def _extract_struct_fields(self, type_spec_node) -> list[FieldDef]:
+        fields = []
+        struct_node = None
+        for child in type_spec_node.children:
+            if child.type == "struct_type":
+                struct_node = child
+                break
+        if not struct_node:
+            return fields
+        for field_decl in self._walk(struct_node, "field_declaration"):
+            type_hint = None
+            names = []
+            for child in field_decl.children:
+                if child.type == "field_identifier":
+                    names.append(child.text.decode())
+                elif child.type == "type_identifier":
+                    type_hint = child.text.decode()
+            for fname in names:
+                fields.append(FieldDef(
+                    name=fname, type_hint=type_hint,
+                    visibility="public" if fname[:1].isupper() else "private",
+                ))
+        return fields
+
+    def _merge_classes(self, type_defs: dict[str, ClassDef], receiver_methods: dict[str, list[FunctionDef]]) -> list[ClassDef]:
+        """Merge receiver methods into type_defs; create stub ClassDefs for any orphan receivers."""
         for type_name, methods in receiver_methods.items():
-            line = methods[0].line if methods else 0
-            classes.append(ClassDef(
-                name=type_name, qualified_name=type_name,
-                line=line, inherits=[], implements=[],
-                fields=[], methods=methods,
-                is_exported=type_name[:1].isupper(),
-            ))
-        return classes
+            if type_name in type_defs:
+                type_defs[type_name].methods.extend(methods)
+            else:
+                # No type declaration found — create a stub struct
+                line = methods[0].line if methods else 0
+                type_defs[type_name] = ClassDef(
+                    name=type_name, qualified_name=type_name,
+                    line=line, inherits=[], implements=[],
+                    fields=[], methods=methods,
+                    is_exported=type_name[:1].isupper(),
+                    class_kind="struct",
+                )
+        return list(type_defs.values())
 
     def _extract_imports(self, root) -> list[ImportDef]:
         imports = []

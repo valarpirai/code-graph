@@ -58,7 +58,17 @@ class ClassDef:
     fields: list[FieldDef]
     methods: list[FunctionDef]
     is_exported: bool
-    class_kind: str = "class"   # "class" | "abstract_class" | "final_class" | "interface"
+    class_kind: str = "class"
+    # Valid values:
+    # "class"          regular class
+    # "abstract_class" abstract class (Java abstract, Python ABC subclass)
+    # "final_class"    final/sealed class (Java final)
+    # "data_class"     record / dataclass (Java record, Kotlin data class, Python @dataclass)
+    # "interface"      interface (Java, TS, Go, Kotlin, Python Protocol)
+    # "enum"           enumeration (Java, TS, Kotlin, Rust, C, Python)
+    # "struct"         struct (Rust, Go, C — also C union)
+    # "trait"          trait (Rust)
+    # "mixin"          mixin module (Ruby)
 
 
 @dataclass

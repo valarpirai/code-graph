@@ -25,6 +25,7 @@ def make_stats_graph() -> Graph:
 def make_class_graph() -> Graph:
     g = Graph()
     g.bind("cg", CG)
+    file1   = URIRef("http://example.org/file/myclass")
     cls1    = URIRef("http://example.org/cls/MyClass")
     parent  = URIRef("http://example.org/cls/BaseClass")
     iface   = URIRef("http://example.org/cls/Serializable")
@@ -33,48 +34,54 @@ def make_class_graph() -> Graph:
     method1 = URIRef("http://example.org/method/greet")
     param1  = URIRef("http://example.org/param/greeting")
 
+    # File → defines → class
+    g.add((file1, RDF.type, CG.File))
+    g.add((file1, CG.filePath, Literal("src/myclass.py")))
+    g.add((file1, CG.language, Literal("python")))
+    g.add((file1, CG.defines, cls1))
+
     g.add((cls1, RDF.type, CG.Class))
     g.add((cls1, CG.name, Literal("MyClass")))
-    g.add((cls1, CG.filePath, Literal("src/myclass.py")))
-    g.add((cls1, CG.language, Literal("python")))
-    g.add((cls1, CG.lineNumber, Literal(10, datatype=XSD.integer)))
+    g.add((cls1, CG.line, Literal(10, datatype=XSD.integer)))
     g.add((cls1, CG.inherits, parent))
     g.add((cls1, CG.implements, iface))
     g.add((cls1, CG.mixes, mixin))
     g.add((cls1, CG.hasField, field1))
     g.add((field1, CG.name, Literal("name")))
-    g.add((field1, CG.type, Literal("str")))
+    g.add((field1, CG.dataType, Literal("str")))
     g.add((field1, CG.visibility, Literal("public")))
     g.add((cls1, CG.hasMethod, method1))
     g.add((method1, CG.name, Literal("greet")))
     g.add((method1, CG.returnType, Literal("str")))
     g.add((method1, CG.hasParameter, param1))
     g.add((param1, CG.name, Literal("greeting")))
-    g.add((param1, CG.type, Literal("str")))
+    g.add((param1, CG.dataType, Literal("str")))
     return g
 
 
 def make_function_graph() -> Graph:
     g = Graph()
     g.bind("cg", CG)
+    file1  = URIRef("http://example.org/file/utils")
     fn1    = URIRef("http://example.org/fn/compute")
     param1 = URIRef("http://example.org/param/x")
     var1   = URIRef("http://example.org/var/result")
     callee = URIRef("http://example.org/fn/helper")
-    mod1   = URIRef("http://example.org/mod/utils")
+
+    g.add((file1, RDF.type, CG.File))
+    g.add((file1, CG.filePath, Literal("src/utils.py")))
+    g.add((file1, CG.language, Literal("python")))
+    g.add((file1, CG.defines, fn1))
 
     g.add((fn1, RDF.type, CG.Function))
     g.add((fn1, CG.name, Literal("compute")))
-    g.add((fn1, CG.filePath, Literal("src/utils.py")))
-    g.add((fn1, CG.language, Literal("python")))
-    g.add((fn1, CG.lineNumber, Literal(5, datatype=XSD.integer)))
-    g.add((fn1, CG.belongsTo, mod1))
+    g.add((fn1, CG.line, Literal(5, datatype=XSD.integer)))
     g.add((fn1, CG.hasParameter, param1))
     g.add((param1, CG.name, Literal("x")))
-    g.add((param1, CG.type, Literal("int")))
+    g.add((param1, CG.dataType, Literal("int")))
     g.add((fn1, CG.hasLocalVar, var1))
     g.add((var1, CG.name, Literal("result")))
-    g.add((var1, CG.type, Literal("int")))
+    g.add((var1, CG.dataType, Literal("int")))
     g.add((fn1, CG.calls, callee))
     g.add((callee, CG.name, Literal("helper")))
     g.add((fn1, CG.frameworkRole, Literal("rest_endpoint")))
@@ -86,25 +93,35 @@ def make_module_graph() -> Graph:
     g = Graph()
     g.bind("cg", CG)
     mod1   = URIRef("http://example.org/mod/utils")
+    file1  = URIRef("http://example.org/file/utils")
     cls1   = URIRef("http://example.org/cls/Helper")
     fn1    = URIRef("http://example.org/fn/compute")
     const1 = URIRef("http://example.org/const/MAX")
+    imp1   = URIRef("http://example.org/import/os")
 
     g.add((mod1, RDF.type, CG.Module))
     g.add((mod1, CG.name, Literal("utils")))
-    g.add((mod1, CG.filePath, Literal("src/utils.py")))
+    g.add((mod1, CG.containsFile, file1))
+
+    g.add((file1, RDF.type, CG.File))
+    g.add((file1, CG.filePath, Literal("src/utils.py")))
+    g.add((file1, CG.defines, cls1))
+    g.add((file1, CG.defines, fn1))
+    g.add((file1, CG.defines, const1))
+    g.add((file1, CG.imports, imp1))
+
     g.add((cls1, RDF.type, CG.Class))
     g.add((cls1, CG.name, Literal("Helper")))
-    g.add((cls1, CG.belongsTo, mod1))
+
     g.add((fn1, RDF.type, CG.Function))
     g.add((fn1, CG.name, Literal("compute")))
-    g.add((fn1, CG.belongsTo, mod1))
+
     g.add((const1, RDF.type, CG.Constant))
     g.add((const1, CG.name, Literal("MAX")))
     g.add((const1, CG.value, Literal("100")))
-    g.add((const1, CG.type, Literal("int")))
-    g.add((const1, CG.belongsTo, mod1))
-    g.add((mod1, CG.imports, Literal("os")))
+
+    g.add((imp1, RDF.type, CG.Import))
+    g.add((imp1, CG.name, Literal("os")))
     return g
 
 
@@ -252,7 +269,6 @@ class TestModuleDetailsQuery:
         assert len(results) == 1
         row = results[0]
         assert str(row.name) == "utils"
-        assert str(row.filePath) == "src/utils.py"
 
 
 class TestModuleClassesQuery:
@@ -279,7 +295,8 @@ class TestModuleConstantsQuery:
         row = results[0]
         assert str(row.constName) == "MAX"
         assert str(row.constValue) == "100"
-        assert str(row.constType) == "int"
+        # constType is the RDF type URI — verify it's a known storage type
+        assert "codegraph.dev/ontology#Constant" in str(row.constType)
 
 
 class TestModuleImportsQuery:
@@ -287,4 +304,4 @@ class TestModuleImportsQuery:
         g = make_module_graph()
         results = list(g.query(Q.MODULE_IMPORTS))
         assert len(results) == 1
-        assert str(results[0].importTarget) == "os"
+        assert str(results[0].importTarget) == "http://example.org/import/os"

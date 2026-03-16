@@ -74,18 +74,18 @@ def get_graph(project_id: str):
             ("framework_role",   _str(CG.frameworkRole)),
             ("value",            _str(CG.value)),
             ("class_kind",       _str(CG.classKind)),
+            ("data_type",        _str(CG.dataType)),
             ("is_test",          _bool(CG.isTest)),
             ("is_abstract",      _bool(CG.isAbstract)),
             ("line_count",       _int(CG.lineCount)),
             ("file_size",        _int(CG.fileSize)),
-            ("var_kind",         _str(CG.varKind)),
         ]:
             if val is not None and val != "" and val is not False:
                 data[key] = val
         nodes.append({"data": data})
 
     for s, p, o in g:
-        if p in (CG.calls, CG.inherits, CG.implements, CG.imports, CG.defines, CG.hasMethod, CG.hasField, CG.containsFile, CG.containsClass):
+        if p in (CG.calls, CG.inherits, CG.implements, CG.mixes, CG.imports, CG.defines, CG.hasMethod, CG.hasField, CG.hasParameter, CG.containsFile, CG.containsClass):
             src, tgt = str(s), str(o)
             if src in node_ids and tgt in node_ids:
                 edges.append({"data": {

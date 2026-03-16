@@ -79,15 +79,15 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
 
   useEffect(() => {
     if (!cy) return;
+    const callableTypes = new Set(["Function", "Method", "Constructor"]);
     cy.nodes().forEach((n) => {
       const typeVisible = filters.visibleNodeTypes.has(n.data("node_type"));
       const testVisible = filters.showTestFiles || !n.data("is_test");
-      const varKindVisible = n.data("node_type") !== "Variable" || !filters.hiddenVarKinds.has(n.data("var_kind"));
-      const visibilityVisible = n.data("node_type") !== "Function" || (
+      const visibilityVisible = !callableTypes.has(n.data("node_type")) || (
         !filters.hiddenVisibilities.has(n.data("visibility") as string) &&
         !(n.data("is_abstract") && filters.hiddenVisibilities.has("abstract"))
       );
-      n.style("display", typeVisible && testVisible && varKindVisible && visibilityVisible ? "element" : "none");
+      n.style("display", typeVisible && testVisible && visibilityVisible ? "element" : "none");
     });
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters]);

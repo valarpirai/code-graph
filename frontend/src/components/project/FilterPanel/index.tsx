@@ -1,11 +1,19 @@
 import type { NodeType, EdgeRelation } from "../../../api/types";
 import { NODE_COLORS, EDGE_COLORS } from "../GraphView/cytoscapeConfig";
 
-const ALL_NODE_TYPES: NodeType[] = ["File", "Class", "Function", "Variable", "ExternalSymbol", "Module"];
-const ALL_EDGE_RELATIONS: EdgeRelation[] = ["calls", "imports", "inherits", "contains", "containsFile", "containsClass", "defines", "uses", "hasMethod", "hasField"];
+// Grouped node types for display
+const TYPE_DEF_NODES: NodeType[] = ["Class", "AbstractClass", "DataClass", "Interface", "Trait", "Enum", "Struct", "Mixin"];
+const CALLABLE_NODES: NodeType[] = ["Function", "Method", "Constructor"];
+const STORAGE_NODES: NodeType[] = ["Field", "Parameter", "LocalVariable", "Constant"];
+const OTHER_NODES: NodeType[] = ["File", "Module", "ExternalSymbol"];
+
+const ALL_EDGE_RELATIONS: EdgeRelation[] = [
+  "calls", "imports", "inherits", "implements", "mixes",
+  "contains", "containsFile", "containsClass",
+  "defines", "uses", "hasMethod", "hasField", "hasParameter",
+];
 
 export const ALL_VISIBILITIES = ["public", "protected", "private", "abstract"] as const;
-export const ALL_VAR_KINDS = ["constant", "static", "final", "instance", "local"] as const;
 
 export interface FilterState {
   visibleNodeTypes: Set<NodeType>;
@@ -13,17 +21,21 @@ export interface FilterState {
   showClusters: boolean;
   showTestFiles: boolean;
   hiddenVisibilities: Set<string>;
-  hiddenVarKinds: Set<string>;
 }
 
 export function defaultFilterState(): FilterState {
   return {
-    visibleNodeTypes: new Set<NodeType>(["File", "Class", "Function", "Variable", "Module"]),
+    visibleNodeTypes: new Set<NodeType>([
+      "File", "Module",
+      "Class", "AbstractClass", "DataClass", "Interface", "Trait", "Enum", "Struct", "Mixin",
+      "Function", "Method", "Constructor",
+      "Field", "Constant",
+      "ExternalSymbol",
+    ]),
     visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS.filter((r) => r !== "calls")),
     showClusters: false,
     showTestFiles: true,
     hiddenVisibilities: new Set(),
-    hiddenVarKinds: new Set(["local"]),
   };
 }
 
@@ -45,16 +57,26 @@ export default function FilterPanel({ filters, onChange }: Props) {
     next.has(v) ? next.delete(v) : next.add(v);
     onChange({ ...filters, hiddenVisibilities: next });
   };
-  const toggleVarKind = (k: string) => {
-    const next = new Set(filters.hiddenVarKinds);
-    next.has(k) ? next.delete(k) : next.add(k);
-    onChange({ ...filters, hiddenVarKinds: next });
-  };
 
   return (
     <div className="card p-4 flex flex-col gap-4 text-xs">
-      <Section label="Node Types">
-        {ALL_NODE_TYPES.map((t) => (
+      <Section label="Type Definitions">
+        {TYPE_DEF_NODES.map((t) => (
+          <CheckRow key={t} label={t} color={NODE_COLORS[t]} checked={filters.visibleNodeTypes.has(t)} onChange={() => toggleNodeType(t)} />
+        ))}
+      </Section>
+      <Section label="Callables">
+        {CALLABLE_NODES.map((t) => (
+          <CheckRow key={t} label={t} color={NODE_COLORS[t]} checked={filters.visibleNodeTypes.has(t)} onChange={() => toggleNodeType(t)} />
+        ))}
+      </Section>
+      <Section label="Storage">
+        {STORAGE_NODES.map((t) => (
+          <CheckRow key={t} label={t} color={NODE_COLORS[t]} checked={filters.visibleNodeTypes.has(t)} onChange={() => toggleNodeType(t)} />
+        ))}
+      </Section>
+      <Section label="Other">
+        {OTHER_NODES.map((t) => (
           <CheckRow key={t} label={t} color={NODE_COLORS[t]} checked={filters.visibleNodeTypes.has(t)} onChange={() => toggleNodeType(t)} />
         ))}
       </Section>
@@ -66,11 +88,6 @@ export default function FilterPanel({ filters, onChange }: Props) {
       <Section label="Method Visibility">
         {ALL_VISIBILITIES.map((v) => (
           <CheckRow key={v} label={v} checked={!filters.hiddenVisibilities.has(v)} onChange={() => toggleVisibility(v)} />
-        ))}
-      </Section>
-      <Section label="Variable Kind">
-        {ALL_VAR_KINDS.map((k) => (
-          <CheckRow key={k} label={k} checked={!filters.hiddenVarKinds.has(k)} onChange={() => toggleVarKind(k)} />
         ))}
       </Section>
       <label className="flex items-center gap-2 cursor-pointer">

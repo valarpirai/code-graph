@@ -2,25 +2,44 @@ import type { Stylesheet } from "cytoscape";
 import type { NodeType, EdgeRelation } from "../../../api/types";
 
 export const NODE_COLORS: Record<NodeType, string> = {
-  File: "#58a6ff",
-  Class: "#3fb950",
-  Function: "#d29922",
-  Variable: "#8b949e",
+  // Infrastructure
+  File:           "#58a6ff",
+  Module:         "#bc8cff",
   ExternalSymbol: "#f85149",
-  Module: "#bc8cff",
+  // TypeDefinition family
+  Class:          "#3fb950",
+  AbstractClass:  "#56d364",
+  DataClass:      "#26a641",
+  Interface:      "#79c0ff",
+  Trait:          "#a5d6ff",
+  Enum:           "#e3b341",
+  Struct:         "#d4a72c",
+  Mixin:          "#ffa657",
+  // Callable family
+  Function:       "#d29922",
+  Method:         "#bb8009",
+  Constructor:    "#9e6a03",
+  // StorageNode family
+  Field:          "#8b949e",
+  Parameter:      "#6e7681",
+  LocalVariable:  "#484f58",
+  Constant:       "#b08800",
 };
 
 export const EDGE_COLORS: Record<EdgeRelation, string> = {
-  calls: "#e6edf3",
-  imports: "#58a6ff",
-  inherits: "#3fb950",
-  contains: "#484f58",
-  containsFile: "#6e7681",
+  calls:         "#e6edf3",
+  imports:       "#58a6ff",
+  inherits:      "#3fb950",
+  implements:    "#79c0ff",
+  mixes:         "#ffa657",
+  contains:      "#484f58",
+  containsFile:  "#6e7681",
   containsClass: "#79c0ff",
-  defines: "#bc8cff",
-  uses: "#8b949e",
-  hasMethod: "#d29922",
-  hasField: "#8b949e",
+  defines:       "#bc8cff",
+  uses:          "#8b949e",
+  hasMethod:     "#d29922",
+  hasField:      "#8b949e",
+  hasParameter:  "#6e7681",
 };
 
 export const CLUSTER_PALETTE = [
@@ -47,20 +66,24 @@ export const baseStylesheet: Stylesheet[] = [
       "background-color": (ele) =>
         NODE_COLORS[ele.data("node_type") as NodeType] ?? "#484f58",
       "border-width": (ele) => {
-        if (ele.data("node_type") === "ExternalSymbol") return 2;
-        if (ele.data("class_kind") && ele.data("class_kind") !== "class") return 2;
+        const nt = ele.data("node_type") as NodeType;
+        if (nt === "ExternalSymbol") return 2;
+        if (nt === "Interface" || nt === "AbstractClass") return 2;
+        if (nt === "Trait" || nt === "Mixin") return 2;
         return 0;
       },
       "border-color": (ele) => {
-        switch (ele.data("class_kind")) {
-          case "interface":      return "#58a6ff";   // blue
-          case "abstract_class": return "#bc8cff";   // purple
-          case "final_class":    return "#d29922";   // amber
-          default: return "#f85149";
+        switch (ele.data("node_type") as NodeType) {
+          case "Interface":     return "#79c0ff";
+          case "AbstractClass": return "#bc8cff";
+          case "Trait":         return "#a5d6ff";
+          case "Mixin":         return "#ffa657";
+          default:              return "#f85149";
         }
       },
       "border-style": (ele) => {
-        if (ele.data("class_kind") === "interface") return "dashed";
+        const nt = ele.data("node_type") as NodeType;
+        if (nt === "Interface" || nt === "Trait") return "dashed";
         return "solid";
       },
       width: 22,
@@ -125,10 +148,4 @@ export const baseStylesheet: Stylesheet[] = [
       "border-style": "dashed",
     },
   },
-  // Variable kind overrides — all use the Variable base color but with different borders
-  { selector: "node[var_kind = 'instance']",  style: { "border-width": 1, "border-color": "#8b949e", "border-style": "solid" } },
-  { selector: "node[var_kind = 'static']",    style: { "border-width": 2, "border-color": "#bc8cff", "border-style": "solid" } },
-  { selector: "node[var_kind = 'constant']",  style: { "border-width": 2, "border-color": "#d29922", "border-style": "solid" } },
-  { selector: "node[var_kind = 'final']",     style: { "border-width": 2, "border-color": "#58a6ff", "border-style": "solid" } },
-  { selector: "node[var_kind = 'local']",     style: { "border-width": 1, "border-color": "#484f58", "border-style": "dotted" } },
 ];

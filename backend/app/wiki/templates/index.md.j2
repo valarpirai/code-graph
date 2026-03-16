@@ -1,6 +1,6 @@
 # {{ project.name }}
 
-**Source URL:** {{ project.source_url }}
+**Source:** {{ project.source }}
 **Last Indexed:** {{ project.last_indexed }}
 
 ---
@@ -27,7 +27,7 @@
 ## Modules
 
 {% for mod in modules -%}
-- [{{ mod.name }}](modules/{{ mod.name }}.md) — `{{ mod.filePath }}`
+- [{{ mod.name }}](modules/{{ mod.name }}.md)
 {% endfor %}
 
 ---

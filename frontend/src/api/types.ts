@@ -22,24 +22,43 @@ export interface Project {
 // ── Graph ─────────────────────────────────────────────────────────────────────
 
 export type NodeType =
+  // Infrastructure
   | "File"
-  | "Class"
-  | "Function"
-  | "Variable"
+  | "Module"
   | "ExternalSymbol"
-  | "Module";
+  // TypeDefinition hierarchy
+  | "Class"
+  | "AbstractClass"
+  | "DataClass"
+  | "Interface"
+  | "Trait"
+  | "Enum"
+  | "Struct"
+  | "Mixin"
+  // Callable hierarchy
+  | "Function"
+  | "Method"
+  | "Constructor"
+  // StorageNode hierarchy
+  | "Field"
+  | "Parameter"
+  | "LocalVariable"
+  | "Constant";
 
 export type EdgeRelation =
   | "calls"
   | "imports"
   | "inherits"
+  | "implements"
+  | "mixes"
   | "contains"
   | "containsFile"
   | "containsClass"
   | "defines"
   | "uses"
   | "hasMethod"
-  | "hasField";
+  | "hasField"
+  | "hasParameter";
 
 export interface GraphNodeData {
   id: string;
@@ -55,11 +74,11 @@ export interface GraphNodeData {
   framework_role?: string;
   value?: string;
   class_kind?: string;
+  data_type?: string;
   is_test?: boolean;
   is_abstract?: boolean;
   line_count?: number;
   file_size?: number;
-  var_kind?: string;
   cluster_id?: string;
   [key: string]: unknown;
 }

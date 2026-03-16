@@ -77,7 +77,7 @@ class WikiGenerator:
         modules = []
         for r in module_rows:
             name = r.get("name") or r.get("module", "").rsplit("/", 1)[-1]
-            modules.append({"name": name, "filePath": r.get("filePath", "")})
+            modules.append({"name": name})
 
         cluster_rows = _rows_to_dicts(self.graph.query(Q.CLUSTER_SUMMARY))
 

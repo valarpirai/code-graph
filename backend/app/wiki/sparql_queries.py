@@ -4,6 +4,15 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 """
 
+# All TypeDefinition subtypes (rdflib SPARQL has no subclass inference)
+_TYPE_DEF_VALUES = "cg:Class cg:AbstractClass cg:DataClass cg:Interface cg:Enum cg:Struct cg:Trait cg:Mixin"
+# All Callable subtypes
+_CALLABLE_VALUES = "cg:Function cg:Method cg:Constructor"
+# Standalone function only
+_FUNCTION_VALUE = "cg:Function"
+# StorageNode subtypes used for module constants
+_STORAGE_VALUES = "cg:Field cg:Constant cg:LocalVariable"
+
 # --- Index page queries ---
 
 PROJECT_STATS = PREFIXES + """
@@ -14,8 +23,14 @@ SELECT
   (COUNT(DISTINCT ?fd) AS ?fieldCount)
 WHERE {
   OPTIONAL { ?f a cg:File . }
-  OPTIONAL { ?fn a cg:Function . }
-  OPTIONAL { ?cl a cg:Class . }
+  OPTIONAL {
+    ?fn a ?fnType .
+    VALUES ?fnType { """ + _CALLABLE_VALUES + """ }
+  }
+  OPTIONAL {
+    ?cl a ?clType .
+    VALUES ?clType { """ + _TYPE_DEF_VALUES + """ }
+  }
   OPTIONAL { ?fd a cg:Field . }
 }
 """
@@ -30,12 +45,12 @@ ORDER BY ?language
 """
 
 TOP_LEVEL_MODULES = PREFIXES + """
-SELECT ?module ?filePath
+SELECT ?module ?name
 WHERE {
   ?module a cg:Module ;
-          cg:filePath ?filePath .
+          cg:name ?name .
 }
-ORDER BY ?filePath
+ORDER BY ?name
 """
 
 CLUSTER_SUMMARY = PREFIXES + """
@@ -55,11 +70,11 @@ ORDER BY DESC(?cohesionScore)
 CLASS_DETAILS = PREFIXES + """
 SELECT ?cls ?name ?filePath ?language ?lineNumber
 WHERE {
-  ?cls a cg:Class ;
-       cg:name ?name ;
-       cg:filePath ?filePath .
-  OPTIONAL { ?cls cg:language ?language . }
-  OPTIONAL { ?cls cg:lineNumber ?lineNumber . }
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:name ?name .
+  OPTIONAL { ?file a cg:File ; cg:defines ?cls ; cg:filePath ?filePath ; cg:language ?language . }
+  OPTIONAL { ?cls cg:line ?lineNumber . }
 }
 ORDER BY ?name
 """
@@ -67,37 +82,40 @@ ORDER BY ?name
 CLASS_INHERITANCE = PREFIXES + """
 SELECT ?cls ?parent
 WHERE {
-  ?cls a cg:Class ;
-       cg:inherits ?parent .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:inherits ?parent .
 }
 """
 
 CLASS_INTERFACES = PREFIXES + """
 SELECT ?cls ?iface
 WHERE {
-  ?cls a cg:Class ;
-       cg:implements ?iface .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:implements ?iface .
 }
 """
 
 CLASS_MIXINS = PREFIXES + """
 SELECT ?cls ?mixin
 WHERE {
-  ?cls a cg:Class ;
-       cg:mixes ?mixin .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:mixes ?mixin .
 }
 """
 
 CLASS_FIELDS = PREFIXES + """
-SELECT ?cls ?fieldName ?fieldType ?visibility ?mutability ?defaultValue
+SELECT ?cls ?fieldName ?fieldType ?visibility ?defaultValue
 WHERE {
-  ?cls a cg:Class ;
-       cg:hasField ?field .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:hasField ?field .
   ?field cg:name ?fieldName .
-  OPTIONAL { ?field cg:type ?fieldType . }
+  OPTIONAL { ?field cg:dataType ?fieldType . }
   OPTIONAL { ?field cg:visibility ?visibility . }
-  OPTIONAL { ?field cg:mutability ?mutability . }
-  OPTIONAL { ?field cg:defaultValue ?defaultValue . }
+  OPTIONAL { ?field cg:value ?defaultValue . }
 }
 ORDER BY ?cls ?fieldName
 """
@@ -105,11 +123,12 @@ ORDER BY ?cls ?fieldName
 CLASS_METHODS = PREFIXES + """
 SELECT ?cls ?methodName ?returnType ?lineNumber
 WHERE {
-  ?cls a cg:Class ;
-       cg:hasMethod ?method .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:hasMethod ?method .
   ?method cg:name ?methodName .
   OPTIONAL { ?method cg:returnType ?returnType . }
-  OPTIONAL { ?method cg:lineNumber ?lineNumber . }
+  OPTIONAL { ?method cg:line ?lineNumber . }
 }
 ORDER BY ?cls ?methodName
 """
@@ -119,32 +138,21 @@ SELECT ?method ?paramName ?paramType
 WHERE {
   ?method cg:hasParameter ?param .
   ?param cg:name ?paramName .
-  OPTIONAL { ?param cg:type ?paramType . }
+  OPTIONAL { ?param cg:dataType ?paramType . }
 }
 ORDER BY ?method ?paramName
-"""
-
-CLASS_CALLERS = PREFIXES + """
-SELECT ?caller ?callerName ?callerType
-WHERE {
-  ?caller cg:calls ?method .
-  ?method cg:belongsTo ?cls .
-  ?cls a cg:Class ;
-       cg:name ?clsName .
-  FILTER(?clsName = ?targetName)
-  ?caller cg:name ?callerName .
-  ?caller a ?callerType .
-}
 """
 
 CLASS_DEPENDENCIES = PREFIXES + """
 SELECT DISTINCT ?cls ?dep ?depName
 WHERE {
-  ?cls a cg:Class .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
   ?cls cg:hasMethod ?method .
-  ?method cg:calls ?depNode .
-  ?depNode cg:belongsTo ?dep .
-  ?dep a cg:Class ;
+  ?method cg:calls ?depMethod .
+  ?dep a ?depType .
+  VALUES ?depType { """ + _TYPE_DEF_VALUES + """ }
+  ?dep cg:hasMethod ?depMethod ;
        cg:name ?depName .
   FILTER(?dep != ?cls)
 }
@@ -166,12 +174,15 @@ STANDALONE_FUNCTIONS = PREFIXES + """
 SELECT ?fn ?name ?filePath ?language ?lineNumber ?module
 WHERE {
   ?fn a cg:Function ;
-      cg:name ?name ;
-      cg:filePath ?filePath .
-  OPTIONAL { ?fn cg:language ?language . }
-  OPTIONAL { ?fn cg:lineNumber ?lineNumber . }
-  OPTIONAL { ?fn cg:belongsTo ?module . }
-  FILTER NOT EXISTS { ?cls a cg:Class ; cg:hasMethod ?fn . }
+      cg:name ?name .
+  OPTIONAL { ?file a cg:File ; cg:defines ?fn ; cg:filePath ?filePath ; cg:language ?language . }
+  OPTIONAL { ?fn cg:line ?lineNumber . }
+  OPTIONAL { ?module a cg:Module ; cg:containsFile ?file . ?file cg:defines ?fn . }
+  FILTER NOT EXISTS {
+    ?cls a ?clsType .
+    VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+    ?cls cg:hasMethod ?fn .
+  }
 }
 ORDER BY ?name
 """
@@ -182,19 +193,18 @@ WHERE {
   ?fn a cg:Function ;
       cg:hasParameter ?param .
   ?param cg:name ?paramName .
-  OPTIONAL { ?param cg:type ?paramType . }
+  OPTIONAL { ?param cg:dataType ?paramType . }
 }
 ORDER BY ?fn ?paramName
 """
 
 FUNCTION_LOCAL_VARS = PREFIXES + """
-SELECT ?fn ?varName ?varType ?mutability
+SELECT ?fn ?varName ?varType
 WHERE {
   ?fn a cg:Function ;
       cg:hasLocalVar ?var .
   ?var cg:name ?varName .
-  OPTIONAL { ?var cg:type ?varType . }
-  OPTIONAL { ?var cg:mutability ?mutability . }
+  OPTIONAL { ?var cg:dataType ?varType . }
 }
 ORDER BY ?fn ?varName
 """
@@ -237,11 +247,10 @@ WHERE {
 # --- Module page queries ---
 
 MODULE_DETAILS = PREFIXES + """
-SELECT ?module ?name ?filePath
+SELECT ?module ?name
 WHERE {
   ?module a cg:Module ;
-          cg:name ?name ;
-          cg:filePath ?filePath .
+          cg:name ?name .
 }
 ORDER BY ?name
 """
@@ -249,9 +258,12 @@ ORDER BY ?name
 MODULE_CLASSES = PREFIXES + """
 SELECT ?module ?cls ?clsName
 WHERE {
-  ?cls a cg:Class ;
-       cg:name ?clsName ;
-       cg:belongsTo ?module .
+  ?module a cg:Module ;
+          cg:containsFile ?file .
+  ?file cg:defines ?cls .
+  ?cls a ?clsType .
+  VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+  ?cls cg:name ?clsName .
 }
 ORDER BY ?module ?clsName
 """
@@ -259,10 +271,16 @@ ORDER BY ?module ?clsName
 MODULE_FUNCTIONS = PREFIXES + """
 SELECT ?module ?fn ?fnName
 WHERE {
+  ?module a cg:Module ;
+          cg:containsFile ?file .
+  ?file cg:defines ?fn .
   ?fn a cg:Function ;
-      cg:name ?fnName ;
-      cg:belongsTo ?module .
-  FILTER NOT EXISTS { ?cls a cg:Class ; cg:hasMethod ?fn . }
+      cg:name ?fnName .
+  FILTER NOT EXISTS {
+    ?cls a ?clsType .
+    VALUES ?clsType { """ + _TYPE_DEF_VALUES + """ }
+    ?cls cg:hasMethod ?fn .
+  }
 }
 ORDER BY ?module ?fnName
 """
@@ -270,12 +288,13 @@ ORDER BY ?module ?fnName
 MODULE_CONSTANTS = PREFIXES + """
 SELECT ?module ?constName ?constValue ?constType
 WHERE {
-  ?module a cg:Module .
-  ?const a cg:Constant ;
-         cg:name ?constName ;
-         cg:belongsTo ?module .
+  ?module a cg:Module ;
+          cg:containsFile ?file .
+  ?file cg:defines ?const .
+  ?const a ?constType .
+  VALUES ?constType { cg:Constant cg:Field cg:LocalVariable }
+  ?const cg:name ?constName .
   OPTIONAL { ?const cg:value ?constValue . }
-  OPTIONAL { ?const cg:type ?constType . }
 }
 ORDER BY ?module ?constName
 """
@@ -284,7 +303,8 @@ MODULE_IMPORTS = PREFIXES + """
 SELECT ?module ?importTarget
 WHERE {
   ?module a cg:Module ;
-          cg:imports ?importTarget .
+          cg:containsFile ?file .
+  ?file cg:imports ?importTarget .
 }
 ORDER BY ?module ?importTarget
 """
