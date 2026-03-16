@@ -10,6 +10,36 @@
 
 set -euo pipefail
 
+# ── Colour helpers (defined first so _ensure_node22 can use them) ─────────────
+green()  { printf '\033[0;32m%s\033[0m\n' "$*"; }
+yellow() { printf '\033[0;33m%s\033[0m\n' "$*"; }
+red()    { printf '\033[0;31m%s\033[0m\n' "$*"; }
+bold()   { printf '\033[1m%s\033[0m\n' "$*"; }
+
+# ── Auto-load nvm and switch to Node 22 if needed ────────────────────────────
+_load_nvm() {
+  # Source nvm if not already loaded
+  if ! command -v nvm &>/dev/null; then
+    local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+    if [[ -s "$nvm_dir/nvm.sh" ]]; then
+      # shellcheck source=/dev/null
+      source "$nvm_dir/nvm.sh"
+    fi
+  fi
+}
+
+_ensure_node22() {
+  _load_nvm
+  local node_major
+  node_major=$(node -e "process.stdout.write(process.versions.node.split('.')[0])" 2>/dev/null || echo "0")
+  if (( node_major < 22 )); then
+    if command -v nvm &>/dev/null; then
+      yellow "  · Node $node_major detected — switching to Node 22 via nvm…"
+      nvm use 22
+    fi
+  fi
+}
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$REPO_ROOT/backend"
 FRONTEND_DIR="$REPO_ROOT/frontend"
@@ -20,11 +50,6 @@ BACKEND_LOG="$LOG_DIR/backend.log"
 FRONTEND_LOG="$LOG_DIR/frontend.log"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-green()  { printf '\033[0;32m%s\033[0m\n' "$*"; }
-yellow() { printf '\033[0;33m%s\033[0m\n' "$*"; }
-red()    { printf '\033[0;31m%s\033[0m\n' "$*"; }
-bold()   { printf '\033[1m%s\033[0m\n' "$*"; }
 
 is_running() {
   local pid_file="$1"
@@ -60,14 +85,17 @@ check_prereqs() {
     ok=false
   fi
 
+  # Try to switch to Node 22 via nvm before checking
+  _ensure_node22
+
   if ! command -v node &>/dev/null; then
-    red "  ✗ node not found — run: nvm use 22"
+    red "  ✗ node not found — install Node 22 via nvm: nvm install 22 && nvm use 22"
     ok=false
   else
     local node_major
     node_major=$(node -e "process.stdout.write(process.versions.node.split('.')[0])")
     if (( node_major < 22 )); then
-      red "  ✗ Node $node_major detected — need Node 22+. Run: nvm use 22"
+      red "  ✗ Node $node_major detected — need Node 22+. Install with: nvm install 22"
       ok=false
     fi
   fi
