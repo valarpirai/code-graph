@@ -15,6 +15,7 @@ EXTENSION_MAP: dict[str, str] = {
     ".rb": "ruby",
     ".c": "c",
     ".h": "c",
+    ".py": "python",
 }
 
 def detect_languages(root: Path) -> list[str]:

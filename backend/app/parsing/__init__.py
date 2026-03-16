@@ -7,6 +7,7 @@ from .rust import RustParser
 from .kotlin import KotlinParser
 from .ruby import RubyParser
 from .c import CParser
+from .python import PythonParser
 
 _EXTENSION_MAP: dict[str, type] = {
     ".java": JavaParser,
@@ -20,6 +21,7 @@ _EXTENSION_MAP: dict[str, type] = {
     ".rb": RubyParser,
     ".c": CParser,
     ".h": CParser,
+    ".py": PythonParser,
 }
 
 
