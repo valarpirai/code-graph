@@ -16,7 +16,7 @@ export function defaultFilterState(): FilterState {
   return {
     // ExternalSymbol nodes are very numerous and noisy — hidden by default
     visibleNodeTypes: new Set<NodeType>(["File", "Class", "Function", "Variable", "Module"]),
-    visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS),
+    visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS.filter((r) => r !== "calls")),
     showClusters: false,
     showTestFiles: true,
     showLocalVars: false,  // local variables are too numerous by default
