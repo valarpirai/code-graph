@@ -3,7 +3,7 @@
 Index a codebase from a GitHub URL or ZIP upload, build an RDF knowledge graph with Tree-sitter AST parsing, and explore it visually.
 
 **Features:**
-- AST parsing for Java, TypeScript, JavaScript, Go, Rust, Kotlin, Ruby, C, Python
+- AST parsing for Java, TypeScript, JavaScript, Go, Rust, Kotlin, Ruby, C, Python + markup types (XML, JSON, YAML, Markdown, HTML)
 - OWL-based RDF knowledge graph (SPARQL-queryable, stored as Turtle)
 - Graph visualization with Cytoscape.js (blast radius, execution flow, Louvain clustering)
 - Auto-generated Markdown wiki from the graph

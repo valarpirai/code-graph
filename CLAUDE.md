@@ -57,8 +57,10 @@ app/
   indexer.py           Indexer.run() — async orchestrator: walk source → parse → RDF → save
   parsing/
     base.py            BaseParser ABC + dataclasses (ParsedFile, ClassDef, FunctionDef, …)
-    __init__.py        get_parser(extension) registry — 12 extensions, 9 languages
-    java.py … python.py  Language parsers (Tree-sitter)
+    __init__.py        get_parser(extension) registry — 20 extensions, 10 code languages + markup types
+    java.py … python.py  Tree-sitter AST parsers (Java, TS, JS, Go, Rust, Kotlin, Ruby, C, Python)
+    markup.py          GenericXmlParser, GenericJsonParser, MarkdownParser, YamlParser, HtmlParser
+    config_parsers.py  parse_tsconfig(), parse_go_mod(), parse_cargo_toml() → ConfigValue list
     framework_detector.py  Detects Spring/FastAPI/Gin/etc. → frameworkRole labels
     entry_point_scorer.py  Scores 0–1 for likely entry points
   rdf/
@@ -116,6 +118,10 @@ pages/
   LandingPage.tsx     GitHub URL input + ZIP upload + project list
   ProjectPage.tsx     4-tab layout (Graph / Hierarchy / Wiki / Query) + WebSocket status
 components/
+  landing/
+    GitHubInput.tsx   GitHub URL text input + submit with inline error display
+    ProjectList.tsx   List of previously indexed projects
+    ZipUpload.tsx     ZIP drag-and-drop upload component
   project/
     GraphView/        Cytoscape.js canvas, NodeSidePanel, MiniMap, cytoscapeConfig
     HierarchyView/    Tree built from cg:contains edges

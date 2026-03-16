@@ -70,7 +70,7 @@ A local-first web application that ingests a codebase (via GitHub URL or ZIP upl
 
 ## Supported Languages
 
-Java, TypeScript, JavaScript, Go, Rust, Kotlin, Ruby, C
+Java, TypeScript, JavaScript, Go, Rust, Kotlin, Ruby, C, Python
 
 ### Language Grammar Mapping
 
@@ -86,6 +86,21 @@ Java, TypeScript, JavaScript, Go, Rust, Kotlin, Ruby, C
 | `.kt`, `.kts` | `tree-sitter-kotlin` |
 | `.rb` | `tree-sitter-ruby` |
 | `.c`, `.h` | `tree-sitter-c` |
+| `.py` | `tree-sitter-python` |
+
+### Markup / Config File Parsing
+
+Non-code files are parsed by lightweight built-in parsers (no Tree-sitter) in `markup.py`:
+
+| File Extension | Parser |
+|---|---|
+| `.xml` | `GenericXmlParser` — extracts Maven pom.xml deps + generic XML structure |
+| `.json` | `GenericJsonParser` — extracts top-level keys as constants |
+| `.md`, `.markdown` | `MarkdownParser` — extracts headings as structure |
+| `.yml`, `.yaml` | `YamlParser` — extracts top-level keys |
+| `.html`, `.htm` | `HtmlParser` — lightweight structural extraction |
+
+Toolchain config files (`tsconfig.json`, `go.mod`, `Cargo.toml`, `build.gradle`) are parsed by `config_parsers.py` to extract module aliases and root paths into `cg:ConfigValue` nodes.
 
 ---
 
@@ -224,18 +239,18 @@ External/unresolved symbols: `<project://{project-id}/external#{qualified-name}>
 
 ### Core Constructs
 
-| Construct | Java | TS/JS | Go | Rust | Kotlin | Ruby | C |
-|---|---|---|---|---|---|---|---|
-| Function/method defs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Function calls | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Class definitions | ✓ | ✓ | — | ✓ (struct/impl) | ✓ | ✓ | — (struct) |
-| Interface / trait | ✓ | ✓ | interface | trait | interface | module | — |
-| Inheritance / implements | ✓ | ✓ | — | — | ✓ | ✓ (include/extend) | — |
-| Imports / use statements | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (require/include) | ✓ (#include) |
-| Fields | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Local variables | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Parameters | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Constants | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Construct | Java | TS/JS | Go | Rust | Kotlin | Ruby | C | Python |
+|---|---|---|---|---|---|---|---|---|
+| Function/method defs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Function calls | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Class definitions | ✓ | ✓ | — | ✓ (struct/impl) | ✓ | ✓ | — (struct) | ✓ |
+| Interface / trait | ✓ | ✓ | interface | trait | interface | module | — | — |
+| Inheritance / implements | ✓ | ✓ | — | — | ✓ | ✓ (include/extend) | — | ✓ |
+| Imports / use statements | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (require/include) | ✓ (#include) | ✓ |
+| Fields | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Local variables | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Parameters | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Constants | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ### Advanced Constructs
 
@@ -458,7 +473,7 @@ npm run dev                     # frontend on :5173
 - Automatic re-indexing on repo changes
 - Multi-user / auth
 - Cloud hosting
-- Languages beyond the 8 supported (Java, TS, JS, Go, Rust, Kotlin, Ruby, C)
+- Languages beyond the 9 supported (Java, TS, JS, Go, Rust, Kotlin, Ruby, C, Python)
 - OWL reasoning beyond class hierarchy (no transitive property materialization)
 - Full type inference (only explicit annotations extracted — no Hindley-Milner)
 - Dynamic dispatch resolution (virtual method calls resolved to declared type only)
