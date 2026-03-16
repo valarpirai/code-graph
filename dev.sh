@@ -119,7 +119,7 @@ start_backend() {
   bold "  Starting backend…"
 
   # Ensure deps are installed
-  (cd "$BACKEND_DIR" && uv sync --quiet)
+  (cd "$BACKEND_DIR" && uv sync)
 
   # Create data dir
   mkdir -p "$REPO_ROOT/data"
@@ -137,15 +137,19 @@ start_backend() {
     echo $! > "$BACKEND_PID_FILE"
   )
 
-  # Wait for it to be ready
+  # Wait for it to be ready (up to 30s)
+  printf "  waiting for backend"
   local i=0
-  while (( i < 20 )); do
-    if curl -sf http://localhost:8000/health &>/dev/null; then
+  while (( i < 60 )); do
+    if curl -sf --connect-timeout 1 http://localhost:8000/health &>/dev/null; then
+      echo ""
       green "  ✓ backend ready at http://localhost:8000"
       return
     fi
+    printf "."
     sleep 0.5; (( i++ ))
   done
+  echo ""
   yellow "  ⚠ backend started but /health not yet responding — check $BACKEND_LOG"
 }
 
@@ -170,15 +174,19 @@ start_frontend() {
     echo $! > "$FRONTEND_PID_FILE"
   )
 
-  # Wait for Vite to be ready
+  # Wait for Vite to be ready (up to 30s)
+  printf "  waiting for frontend"
   local i=0
-  while (( i < 20 )); do
-    if curl -sf http://localhost:5173 &>/dev/null; then
+  while (( i < 60 )); do
+    if curl -sf --connect-timeout 1 http://localhost:5173 &>/dev/null; then
+      echo ""
       green "  ✓ frontend ready at http://localhost:5173"
       return
     fi
+    printf "."
     sleep 0.5; (( i++ ))
   done
+  echo ""
   yellow "  ⚠ frontend started but not yet responding — check $FRONTEND_LOG"
 }
 
