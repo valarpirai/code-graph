@@ -100,31 +100,31 @@ class TestListWikiEndpoint:
         response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki")
         assert response.status_code == 200
 
-    def test_returns_list(self, client):
+    def test_returns_files_key(self, client):
         client.post(f"/api/v1/projects/{PROJECT_ID}/wiki/generate")
         response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki")
-        assert isinstance(response.json(), list)
+        assert "files" in response.json()
+        assert isinstance(response.json()["files"], list)
 
     def test_index_entry_present(self, client):
         client.post(f"/api/v1/projects/{PROJECT_ID}/wiki/generate")
         response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki")
-        paths = [entry["path"] for entry in response.json()]
+        paths = [entry["path"] for entry in response.json()["files"]]
         assert any("index.md" in p for p in paths)
 
     def test_entry_has_required_keys(self, client):
         client.post(f"/api/v1/projects/{PROJECT_ID}/wiki/generate")
         response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki")
-        entries = response.json()
+        entries = response.json()["files"]
         assert len(entries) > 0
         entry = entries[0]
         assert "path" in entry
-        assert "type" in entry
         assert "name" in entry
 
     def test_returns_empty_list_if_wiki_not_generated(self, client):
         response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki")
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json() == {"files": []}
 
     def test_returns_404_for_missing_project(self, client_no_project):
         response = client_no_project.get("/api/v1/projects/nonexistent-id/wiki")
@@ -138,10 +138,17 @@ class TestFetchWikiFileEndpoint:
         assert response.status_code == 200
         assert "Wiki Test Project" in response.text
 
-    def test_content_type_is_text(self, client):
+    def test_content_type_is_json(self, client):
         client.post(f"/api/v1/projects/{PROJECT_ID}/wiki/generate")
         response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki/index.md")
-        assert "text" in response.headers["content-type"]
+        assert "application/json" in response.headers["content-type"]
+
+    def test_response_has_content_and_name(self, client):
+        client.post(f"/api/v1/projects/{PROJECT_ID}/wiki/generate")
+        response = client.get(f"/api/v1/projects/{PROJECT_ID}/wiki/index.md")
+        body = response.json()
+        assert "content" in body
+        assert "name" in body
 
     def test_nested_file_path_works(self, client, project_dir):
         client.post(f"/api/v1/projects/{PROJECT_ID}/wiki/generate")

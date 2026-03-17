@@ -144,6 +144,24 @@ export interface WikiContentResponse {
   name: string;
 }
 
+// ── Wiki Search ───────────────────────────────────────────────────────────────
+
+export interface WikiSearchResponse {
+  answer: string;
+  sources: string[];
+}
+
+// ── NL SPARQL ─────────────────────────────────────────────────────────────────
+
+export interface NLSparqlResponse {
+  query: string;
+  variables: string[];
+  results: {
+    bindings: SparqlResult[];
+  };
+  error?: string;
+}
+
 // ── WebSocket events ──────────────────────────────────────────────────────────
 
 export type WsEventType =

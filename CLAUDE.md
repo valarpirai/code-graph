@@ -52,7 +52,7 @@ Data is persisted in `./data/` (mounted as `/data` in the container).
 ```
 app/
   main.py              FastAPI app — mounts all routers + WebSocket
-  config.py            Settings (data_dir, cors_origins) via pydantic-settings
+  config.py            Settings (data_dir, cors_origins, anthropic_api_key) via pydantic-settings
   dependencies.py      get_store() — LRU-cached ProjectStore factory
   indexer.py           Indexer.run() — async orchestrator: walk source → parse → RDF → save
   parsing/
@@ -75,12 +75,15 @@ app/
   api/
     projects.py        CRUD + /upload + /reindex
     graph.py           GET /{id}/graph → Cytoscape-format {nodes, edges}
-    analysis.py        blast-radius, execution-flow, clusters, sparql endpoints
-    wiki.py            POST /wiki/generate, GET /wiki, GET /wiki/{path}
+    analysis.py        blast-radius, execution-flow, clusters, sparql (+ natural language query)
+    wiki.py            POST /wiki/generate, GET /wiki, GET /wiki/{path}, POST /wiki/search
   wiki/
     sparql_queries.py  Named SPARQL query strings (cg: namespace)
     generator.py       WikiGenerator — queries graph → Jinja2 → writes .md files
     templates/         index.md.j2, class.md.j2, module.md.j2, function.md.j2
+  ai/
+    wiki_search.py     RAG-based semantic search over wiki files (Claude Sonnet 4.6)
+    nl_sparql.py       Natural language → SPARQL query generation (Claude Sonnet 4.6)
   storage/
     project_store.py   ProjectStore — save/load/delete ProjectMeta, update_status,
                        wiki_dir(), graph_path(), source_dir()
@@ -160,6 +163,43 @@ Object properties: `cg:calls`, `cg:imports`, `cg:inherits`, `cg:implements`, `cg
 Datatype properties: `cg:name`, `cg:qualifiedName`, `cg:filePath`, `cg:language`, `cg:line`, `cg:visibility`, `cg:isExported`, `cg:frameworkRole`, `cg:entryPointScore`, `cg:dataType`, `cg:returnType`, `cg:classKind`, `cg:value`, `cg:isTest`, `cg:isAbstract`, `cg:lineCount`, `cg:fileSize`.
 
 **Breaking change:** Existing `graph.ttl` files must be re-indexed after the hierarchy change (node URIs changed from `variable/` to `storage/`, rdf:type changed for all subtypes).
+
+---
+
+## LLM-Powered Features (NEW)
+
+**Configuration Required**:
+Set `ANTHROPIC_API_KEY` environment variable or in `.env` file. Both features return HTTP 503 if not configured.
+
+### 1. Wiki Semantic Search (RAG)
+
+**Endpoint**: `POST /api/v1/projects/{id}/wiki/search`
+**Request**: `{"question": "What does the render method do?"}`
+**Response**: `{"answer": "...", "sources": ["classes/Component.md", ...]}`
+
+**How it works**:
+- Ranks all wiki `.md` files by keyword relevance to the question
+- Loads top-ranked files into Claude context (up to 80k chars)
+- Claude generates natural language answer based only on wiki content
+- Returns answer + source file paths
+
+**Frontend**: Added "Ask the Wiki" input box at top of Wiki tab. Answer displayed in Markdown, sources clickable.
+
+### 2. Natural Language → SPARQL
+
+**Endpoint**: `POST /api/v1/projects/{id}/sparql/natural`
+**Request**: `{"question": "Which functions call the render method?"}`
+**Response**: `{"query": "PREFIX cg:...", "variables": [...], "results": {"bindings": [...]}}`
+
+**How it works**:
+- System prompt includes full ontology schema (node types, properties, relations)
+- Claude generates SPARQL SELECT query from natural language
+- Backend executes query against project graph
+- Returns both the generated SPARQL AND the results
+
+**Frontend**: Added NL input field at top of Query tab. Generated SPARQL populates editor (user can inspect/edit), results displayed in table.
+
+**Model**: Both features use `claude-sonnet-4-6` (non-streaming, 1-2s latency typical).
 
 ---
 

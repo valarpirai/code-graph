@@ -6,6 +6,8 @@ import type {
   SparqlResponse,
   WikiListResponse,
   WikiContentResponse,
+  WikiSearchResponse,
+  NLSparqlResponse,
   CreateProjectRequest,
 } from "./types";
 
@@ -97,6 +99,18 @@ export const getWikiContent = (id: string, fileName: string) =>
 
 export const generateWiki = (id: string) =>
   apiFetch<void>(`/api/v1/projects/${id}/wiki/generate`, { method: "POST" });
+
+export const searchWiki = (id: string, question: string) =>
+  apiFetch<WikiSearchResponse>(`/api/v1/projects/${id}/wiki/search`, {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+
+export const runNLSparql = (id: string, question: string) =>
+  apiFetch<NLSparqlResponse>(`/api/v1/projects/${id}/sparql/natural`, {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
 
 // ── WebSocket factory ─────────────────────────────────────────────────────────
 

@@ -16,17 +16,17 @@ export default function WikiSidebar({ files, selected, onSelect }: Props) {
   return (
     <ul className="flex flex-col gap-0.5 p-2">
       {files.map((f) => (
-        <li key={f.name}>
+        <li key={f.path}>
           <button
-            onClick={() => onSelect(f.name)}
+            onClick={() => onSelect(f.path)}
             className={`w-full text-left text-xs px-3 py-2 rounded transition-colors
                         ${
-                          selected === f.name
+                          selected === f.path
                             ? "bg-accent-blue/20 text-accent-blue"
                             : "text-gray-400 hover:bg-surface-elevated hover:text-gray-200"
                         }`}
           >
-            {f.name.replace(/\.md$/, "")}
+            {f.name}
           </button>
         </li>
       ))}

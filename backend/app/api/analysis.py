@@ -87,3 +87,21 @@ def sparql_query(project_id: str, body: SparqlRequest):
                 binding[var] = {"type": cell_type, "value": str(cell)}
         bindings.append(binding)
     return {"variables": variables, "results": {"bindings": bindings}}
+
+
+class NLQueryRequest(BaseModel):
+    question: str
+
+
+@router.post("/sparql/natural")
+def nl_sparql_query(project_id: str, body: NLQueryRequest):
+    from app.config import get_settings
+    api_key = get_settings().anthropic_api_key
+    if not api_key:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "not_configured", "message": "ANTHROPIC_API_KEY not configured"},
+        )
+    graph = get_project_graph(project_id)
+    from app.ai.nl_sparql import nl_to_sparql
+    return nl_to_sparql(graph, body.question, api_key)

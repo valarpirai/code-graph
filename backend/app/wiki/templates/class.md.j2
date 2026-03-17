@@ -32,10 +32,10 @@
 
 ## Fields
 
-| Name | Type | Visibility | Mutability | Default |
-|------|------|------------|------------|---------|
+| Name | Type | Visibility | Default |
+|------|------|------------|---------|
 {% for f in fields -%}
-| {{ f.fieldName }} | {{ f.fieldType or '' }} | {{ f.visibility or '' }} | {{ f.mutability or '' }} | {{ f.defaultValue or '' }} |
+| {{ f.fieldName }} | {{ f.fieldType or '' }} | {{ f.visibility or '' }} | {{ f.defaultValue or '' }} |
 {% endfor %}
 
 ## Methods

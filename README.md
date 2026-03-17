@@ -1,4 +1,4 @@
-# code-graph
+# Code Graph
 
 Index a codebase from a GitHub URL or ZIP upload, build an RDF knowledge graph with Tree-sitter AST parsing, and explore it visually.
 

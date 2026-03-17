@@ -21,10 +21,10 @@ _No parameters._
 ## Local Variables
 
 {% if local_vars %}
-| Name | Type | Mutability |
-|------|------|------------|
+| Name | Type |
+|------|------|
 {% for v in local_vars -%}
-| {{ v.varName }} | {{ v.varType or '' }} | {{ v.mutability or '' }} |
+| {{ v.varName }} | {{ v.varType or '' }} |
 {% endfor %}
 {% else %}
 _No local variables recorded._

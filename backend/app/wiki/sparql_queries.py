@@ -202,8 +202,9 @@ FUNCTION_LOCAL_VARS = PREFIXES + """
 SELECT ?fn ?varName ?varType
 WHERE {
   ?fn a cg:Function ;
-      cg:hasLocalVar ?var .
-  ?var cg:name ?varName .
+      cg:defines ?var .
+  ?var a cg:LocalVariable ;
+       cg:name ?varName .
   OPTIONAL { ?var cg:dataType ?varType . }
 }
 ORDER BY ?fn ?varName

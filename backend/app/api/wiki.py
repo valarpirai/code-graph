@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
 from rdflib import Graph
 
+from app.config import get_settings
 from app.dependencies import get_store
 from app.storage.project_store import ProjectStore
 from app.wiki.generator import WikiGenerator
@@ -45,32 +46,29 @@ def generate_wiki(project_id: str, store: ProjectStore = Depends(get_store)) -> 
 
 
 @router.get("/{project_id}/wiki")
-def list_wiki(project_id: str, store: ProjectStore = Depends(get_store)) -> list[dict]:
+def list_wiki(project_id: str, store: ProjectStore = Depends(get_store)) -> dict:
     _get_project_or_404(project_id, store)
 
     wiki_dir = store.wiki_dir(project_id)
     if not wiki_dir.exists():
-        return []
+        return {"files": []}
 
-    entries = []
+    files = []
     for md_file in sorted(wiki_dir.rglob("*.md")):
         rel = md_file.relative_to(wiki_dir)
-        parts = rel.parts
-        file_type = "index" if len(parts) == 1 else parts[0]
-        entries.append({
+        files.append({
             "path": str(rel),
-            "type": file_type,
             "name": md_file.stem,
         })
-    return entries
+    return {"files": files}
 
 
-@router.get("/{project_id}/wiki/{file_path:path}", response_class=PlainTextResponse)
+@router.get("/{project_id}/wiki/{file_path:path}")
 def fetch_wiki_file(
     project_id: str,
     file_path: str,
     store: ProjectStore = Depends(get_store),
-) -> str:
+) -> dict:
     _get_project_or_404(project_id, store)
 
     wiki_dir = store.wiki_dir(project_id)
@@ -85,4 +83,28 @@ def fetch_wiki_file(
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail=f"Wiki file '{file_path}' not found")
 
-    return target.read_text(encoding="utf-8")
+    return {"content": target.read_text(encoding="utf-8"), "name": target.stem}
+
+
+class WikiSearchRequest(BaseModel):
+    question: str
+
+
+@router.post("/{project_id}/wiki/search")
+def search_wiki(
+    project_id: str,
+    body: WikiSearchRequest,
+    store: ProjectStore = Depends(get_store),
+) -> dict:
+    _get_project_or_404(project_id, store)
+
+    api_key = get_settings().anthropic_api_key
+    if not api_key:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not configured")
+
+    wiki_dir = store.wiki_dir(project_id)
+    if not wiki_dir.exists() or not list(wiki_dir.rglob("*.md")):
+        raise HTTPException(status_code=400, detail="Wiki not generated yet. Run /wiki/generate first.")
+
+    from app.ai.wiki_search import search_wiki as _search
+    return _search(wiki_dir, body.question, api_key)
