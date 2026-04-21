@@ -1,7 +1,7 @@
 import pytest
 from rdflib import Graph, URIRef, Namespace
 
-CG = Namespace("http://codegraph.io/ontology#")
+CG = Namespace("http://codegraph.dev/ontology#")
 
 ENTRY   = URIRef("http://example.org/func/entry")
 CALLER1 = URIRef("http://example.org/func/caller1")
@@ -68,9 +68,9 @@ def test_affected_files_grouped():
     from app.analysis.blast_radius import compute_blast_radius
     g = make_graph(
         (CALLER1, CG.calls, TARGET),
-        (CALLER1, CG.definedIn, FILE_A),
+        (FILE_A, CG.defines, CALLER1),
         (CALLER2, CG.calls, TARGET),
-        (CALLER2, CG.definedIn, FILE_B),
+        (FILE_B, CG.defines, CALLER2),
     )
     result = compute_blast_radius(g, str(TARGET))
     assert str(FILE_A) in result["affected_files"]

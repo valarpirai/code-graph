@@ -2,7 +2,7 @@ import pytest
 import networkx as nx
 from rdflib import Graph, URIRef, Namespace
 
-CG = Namespace("http://codegraph.io/ontology#")
+CG = Namespace("http://codegraph.dev/ontology#")
 
 A = URIRef("http://example.org/func/A")
 B = URIRef("http://example.org/func/B")

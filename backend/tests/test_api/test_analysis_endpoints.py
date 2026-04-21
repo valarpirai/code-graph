@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 from rdflib import Graph, URIRef, Namespace
 
-CG = Namespace("http://codegraph.io/ontology#")
+CG = Namespace("http://codegraph.dev/ontology#")
 
 PROJECT_ID = "test-proj-001"
 

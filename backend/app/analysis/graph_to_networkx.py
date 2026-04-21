@@ -2,7 +2,7 @@
 from rdflib import Graph, Namespace
 import networkx as nx
 
-CG = Namespace("http://codegraph.io/ontology#")
+CG = Namespace("http://codegraph.dev/ontology#")
 
 
 def calls_to_digraph(rdf_graph: Graph) -> nx.DiGraph:

@@ -14,7 +14,7 @@ import networkx as nx
 
 from app.analysis.graph_to_networkx import calls_to_digraph
 
-CG = Namespace("http://codegraph.io/ontology#")
+CG = Namespace("http://codegraph.dev/ontology#")
 
 
 def compute_blast_radius(rdf_graph: Graph, node_uri: str) -> dict:
@@ -39,11 +39,17 @@ def compute_blast_radius(rdf_graph: Graph, node_uri: str) -> dict:
     transitive_only = transitive - direct
 
     # affected files
+    # - file-level functions: File --cg:defines--> Callable
+    # - methods: Class --cg:hasMethod--> Method; File --cg:defines--> Class
     all_callers = direct | transitive_only
     affected_files: set[str] = set()
     for caller_uri in all_callers:
-        for _, _, file_uri in rdf_graph.triples((URIRef(caller_uri), CG.definedIn, None)):
+        caller_ref = URIRef(caller_uri)
+        for file_uri, _, _ in rdf_graph.triples((None, CG.defines, caller_ref)):
             affected_files.add(str(file_uri))
+        for cls_uri, _, _ in rdf_graph.triples((None, CG.hasMethod, caller_ref)):
+            for file_uri, _, _ in rdf_graph.triples((None, CG.defines, cls_uri)):
+                affected_files.add(str(file_uri))
 
     severity = len(all_callers)
 
