@@ -100,3 +100,38 @@ def get_graph(project_id: str):
                 }})
 
     return {"nodes": nodes, "edges": edges}
+
+
+@router.get("/{project_id}/graph/summary")
+def get_graph_summary(project_id: str):
+    data_dir = _get_data_dir()
+    graph_path = data_dir / project_id / "graph.ttl"
+    if not graph_path.exists():
+        raise HTTPException(status_code=404, detail={"error": "graph_not_found", "message": "Graph not yet built for this project"})
+
+    g = load_graph(project_id, data_dir)
+
+    node_counts: dict[str, int] = {}
+    for s, _, o in g.triples((None, RDF.type, None)):
+        if o in _OWL_META:
+            continue
+        type_name = str(o).split("#")[-1]
+        node_counts[type_name] = node_counts.get(type_name, 0) + 1
+
+    _EDGE_PREDICATES = {
+        CG.calls, CG.inherits, CG.implements, CG.mixes, CG.imports,
+        CG.defines, CG.hasMethod, CG.hasField, CG.hasParameter,
+        CG.containsFile, CG.containsClass,
+    }
+    edge_counts: dict[str, int] = {}
+    for _, p, _ in g:
+        if p in _EDGE_PREDICATES:
+            rel = str(p).split("#")[-1]
+            edge_counts[rel] = edge_counts.get(rel, 0) + 1
+
+    return {
+        "total_nodes": sum(node_counts.values()),
+        "total_edges": sum(edge_counts.values()),
+        "nodes_by_type": node_counts,
+        "edges_by_relation": edge_counts,
+    }
