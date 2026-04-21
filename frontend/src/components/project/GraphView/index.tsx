@@ -95,6 +95,7 @@ function applyGroupByFile(cy: cytoscape.Core, enabled: boolean): void {
         if (fp) filePathToId.set(fp, n.id());
       }
     });
+    cy.startBatch();
     cy.nodes().forEach((n) => {
       if (n.data("node_type") === "File" || n.data("node_type") === "Module") return;
       const fp = n.data("file_path") as string | undefined;
@@ -103,10 +104,11 @@ function applyGroupByFile(cy: cytoscape.Core, enabled: boolean): void {
         if (fileId) n.move({ parent: fileId });
       }
     });
+    cy.endBatch();
   } else {
-    cy.nodes().forEach((n) => {
-      if (n.isChild()) n.move({ parent: null });
-    });
+    cy.startBatch();
+    cy.nodes().forEach((n) => { if (n.isChild()) n.move({ parent: null }); });
+    cy.endBatch();
   }
 }
 
@@ -151,6 +153,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     setCy(instance);
 
     const loadedIds = new Set<string>();
+    const addedEdgeIds = new Set<string>();
 
     const runStage = (stageIndex: number) => {
       if (stageIndex >= RENDER_STAGES.length) {
@@ -169,10 +172,11 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
 
       const newNodeIds = new Set(newNodes.map(n => n.data.id));
       newNodes.forEach(n => loadedIds.add(n.data.id));
-      const newEdges = graphData.edges.filter(
-        e => loadedIds.has(e.data.source) && loadedIds.has(e.data.target)
+      const newEdgesInStage = graphData.edges.filter(
+        e => loadedIds.has(e.data.source) && loadedIds.has(e.data.target) && !addedEdgeIds.has(e.data.id)
       );
-      instance.add([...newNodes, ...newEdges]);
+      newEdgesInStage.forEach(e => addedEdgeIds.add(e.data.id));
+      instance.add([...newNodes, ...newEdgesInStage]);
       setRenderProgress({ loaded: loadedIds.size, total: graphData.nodes.length });
 
       // Yield to browser so React commits the progress update before any
@@ -270,9 +274,9 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   useEffect(() => {
     if (!cy) return;
     const callableTypes = new Set(["Function", "Method", "Constructor"]);
+    cy.startBatch();
     cy.nodes().forEach((n) => {
       const nodeType = n.data("node_type") as string;
-      // File nodes must stay visible when groupByFile is on (they act as compound containers)
       const forceVisible = filters.groupByFile && nodeType === "File";
       const typeVisible = filters.visibleNodeTypes.has(n.data("node_type"));
       const testVisible = filters.showTestFiles || !n.data("is_test");
@@ -284,7 +288,10 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       const langVisible = !lang || filters.hiddenLanguages.size === 0 || !filters.hiddenLanguages.has(lang);
       n.style("display", forceVisible || (typeVisible && testVisible && visibilityVisible && langVisible) ? "element" : "none");
     });
-    cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
+    cy.edges().forEach((e) => {
+      e.style("display", filters.visibleEdgeRelations.has(e.data("relation")) ? "element" : "none");
+    });
+    cy.endBatch();
   }, [cy, filters, renderComplete]);
 
   // Shared layout runner: shows loading indicator, yields to browser so the
@@ -294,7 +301,14 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     setLayouting(true);
     setTimeout(() => {
       applyGroupByFile(cy, filters.groupByFile);
-      const l = cy.layout(buildLayoutOptions(filters.layoutName, filters.nodeSpacing, cy.nodes().length));
+      const visibleEles = cy.elements(":visible");
+      const visNodeCount = visibleEles.nodes().length;
+      // Auto-downgrade synchronous force-directed layouts that block the main
+      // thread for large visible sets.
+      let effectiveName: LayoutName = filters.layoutName;
+      if (visNodeCount > 800 && effectiveName === "cose-bilkent") effectiveName = "dagre";
+      if (visNodeCount > 2000) effectiveName = "grid";
+      const l = visibleEles.layout(buildLayoutOptions(effectiveName, filters.nodeSpacing, visNodeCount));
       l.one("layoutstop", () => setLayouting(false));
       l.run();
     }, 50);
