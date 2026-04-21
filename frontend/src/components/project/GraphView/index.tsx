@@ -14,6 +14,20 @@ import { getBlastRadius, getExecutionFlow } from "../../../api/client";
 
 cytoscape.use(coseBilkent);
 
+const RENDER_STAGES: readonly string[][] = [
+  ["File", "Module"],
+  ["Class", "AbstractClass", "DataClass", "Interface", "Trait", "Enum", "Struct", "Mixin"],
+  ["Function", "Method", "Constructor"],
+  ["Field", "Parameter", "LocalVariable", "Constant", "Import", "ExternalSymbol"],
+];
+
+function adaptiveNumIter(nodeCount: number): number {
+  if (nodeCount < 150) return 2500;
+  if (nodeCount < 400) return 1200;
+  if (nodeCount < 800) return 600;
+  return 300;
+}
+
 interface Props {
   projectId: string;
   linkedNodeId?: string | null;
@@ -26,28 +40,22 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   const [cy, setCy] = useState<cytoscape.Core | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNodeData | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilterState());
+  const [renderProgress, setRenderProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [renderComplete, setRenderComplete] = useState(false);
 
   const { data: graphData, isLoading, isError } = useGraph(projectId);
   const { data: clusterData } = useClusters(projectId);
 
   useEffect(() => {
     if (!containerRef.current || !graphData) return;
+
+    setRenderComplete(false);
+    setRenderProgress({ loaded: 0, total: graphData.nodes.length });
+
     const instance = cytoscape({
       container: containerRef.current,
-      elements: [...graphData.nodes, ...graphData.edges],
+      elements: [],
       style: baseStylesheet,
-      layout: {
-        name: "cose-bilkent",
-        animate: false,
-        randomize: true,
-        idealEdgeLength: 120,
-        nodeRepulsion: 12000,
-        nodeDimensionsIncludeLabels: true,
-        padding: 60,
-        gravity: 0.15,
-        numIter: 2500,
-        tile: true,
-      } as cytoscape.LayoutOptions,
       wheelSensitivity: 0.3,
     });
     instance.on("tap", "node", (evt) => {
@@ -58,7 +66,57 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     instance.on("tap", (evt) => { if (evt.target === instance) setSelectedNode(null); });
     cyRef.current = instance;
     setCy(instance);
-    return () => { instance.destroy(); cyRef.current = null; setCy(null); };
+
+    const loadedIds = new Set<string>();
+
+    const runStage = (stageIndex: number) => {
+      if (stageIndex >= RENDER_STAGES.length) {
+        setRenderProgress(null);
+        setRenderComplete(true);
+        return;
+      }
+
+      const stageTypes = new Set(RENDER_STAGES[stageIndex]);
+      const newNodes = graphData.nodes.filter(n => stageTypes.has(n.data.node_type));
+
+      if (newNodes.length === 0) {
+        setTimeout(() => runStage(stageIndex + 1), 0);
+        return;
+      }
+
+      newNodes.forEach(n => loadedIds.add(n.data.id));
+      const newEdges = graphData.edges.filter(
+        e => loadedIds.has(e.data.source) && loadedIds.has(e.data.target)
+      );
+      instance.add([...newNodes, ...newEdges]);
+      setRenderProgress({ loaded: loadedIds.size, total: graphData.nodes.length });
+
+      const layout = instance.layout({
+        name: "cose-bilkent",
+        animate: false,
+        randomize: stageIndex === 0,
+        idealEdgeLength: 120,
+        nodeRepulsion: 12000,
+        nodeDimensionsIncludeLabels: true,
+        padding: 60,
+        gravity: 0.15,
+        numIter: adaptiveNumIter(instance.nodes().length),
+        tile: true,
+      } as cytoscape.LayoutOptions);
+
+      layout.on("layoutstop", () => setTimeout(() => runStage(stageIndex + 1), 50));
+      layout.run();
+    };
+
+    runStage(0);
+
+    return () => {
+      instance.destroy();
+      cyRef.current = null;
+      setCy(null);
+      setRenderProgress(null);
+      setRenderComplete(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphData]);
 
@@ -90,7 +148,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       n.style("display", typeVisible && testVisible && visibilityVisible ? "element" : "none");
     });
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
-  }, [cy, filters]);
+  }, [cy, filters, renderComplete]);
 
   useEffect(() => {
     if (!cy || !linkedNodeId) return;
@@ -160,6 +218,12 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
           <div className="w-48"><SearchBar onSearch={handleSearch} /></div>
         </div>
         <div ref={containerRef} className="flex-1 bg-surface" />
+        {renderProgress && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-surface-overlay border border-surface-border text-gray-400 text-xs px-3 py-1.5 rounded-full pointer-events-none">
+            <span className="animate-pulse">●</span>
+            Rendering {renderProgress.loaded} / {renderProgress.total} nodes…
+          </div>
+        )}
         <MiniMap cy={cy} />
         {selectedNode && (
           <NodeSidePanel node={selectedNode} graphData={graphData ?? { nodes: [], edges: [] }} onClose={() => setSelectedNode(null)} onBlastRadius={handleBlastRadius} onExecutionFlow={handleExecutionFlow} onSelectNode={handleSelectNode} />
