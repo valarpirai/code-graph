@@ -46,8 +46,10 @@ FRONTEND_DIR="$REPO_ROOT/frontend"
 LOG_DIR="$REPO_ROOT/.dev-logs"
 BACKEND_PID_FILE="$LOG_DIR/backend.pid"
 FRONTEND_PID_FILE="$LOG_DIR/frontend.pid"
+MCP_PID_FILE="$LOG_DIR/mcp.pid"
 BACKEND_LOG="$LOG_DIR/backend.log"
 FRONTEND_LOG="$LOG_DIR/frontend.log"
+MCP_LOG="$LOG_DIR/mcp.log"
 
 # Resolve absolute paths to tools now (before any subshells lose PATH context)
 UV="$(command -v uv 2>/dev/null || true)"
@@ -211,6 +213,57 @@ start_frontend() {
   yellow "  ⚠ frontend started but not yet responding — check $FRONTEND_LOG"
 }
 
+start_mcp() {
+  if is_running "$MCP_PID_FILE"; then
+    yellow "  · MCP server already running (pid $(cat "$MCP_PID_FILE"))"
+    return
+  fi
+
+  bold "  Starting MCP server…"
+
+  (
+    cd "$BACKEND_DIR"
+    nohup "$UV" run python mcp_server.py --transport sse --port 8001 \
+      >> "$MCP_LOG" 2>&1 &
+    echo $! > "$MCP_PID_FILE"
+    disown $!
+  )
+
+  printf "  waiting for MCP server"
+  local i=0
+  while (( i < 20 )); do
+    if curl -sf --connect-timeout 1 http://localhost:8001/sse &>/dev/null; then
+      echo ""
+      green "  ✓ MCP server ready at http://localhost:8001/sse"
+      return
+    fi
+    if [[ -f "$MCP_PID_FILE" ]] && ! kill -0 "$(cat "$MCP_PID_FILE")" 2>/dev/null; then
+      echo ""
+      red "  ✗ MCP server process exited unexpectedly. Last log lines:"
+      echo ""
+      tail -20 "$MCP_LOG" | sed 's/^/    /'
+      echo ""
+      return 1
+    fi
+    printf "."
+    sleep 0.5; (( i++ ))
+  done
+  echo ""
+  yellow "  ⚠ MCP server started but not yet responding — check $MCP_LOG"
+}
+
+cmd_mcp() {
+  bold "code-graph dev — starting MCP server (SSE)"
+  echo ""
+  mkdir -p "$LOG_DIR"
+  start_mcp
+  echo ""
+  bold "Log:"
+  echo "  MCP server → $MCP_LOG"
+  echo ""
+  echo "Run './dev.sh stop' to shut down."
+}
+
 cmd_start() {
   bold "code-graph dev — starting services"
   echo ""
@@ -225,11 +278,13 @@ cmd_start() {
 
   start_backend
   start_frontend
+  start_mcp
 
   echo ""
   bold "Logs:"
-  echo "  backend  → $BACKEND_LOG"
-  echo "  frontend → $FRONTEND_LOG"
+  echo "  backend     → $BACKEND_LOG"
+  echo "  frontend    → $FRONTEND_LOG"
+  echo "  MCP server  → $MCP_LOG"
   echo ""
   echo "Run './dev.sh stop' to shut down."
 }
@@ -239,8 +294,9 @@ cmd_start() {
 cmd_stop() {
   bold "code-graph dev — stopping services"
   echo ""
-  stop_service "backend"  "$BACKEND_PID_FILE"
-  stop_service "frontend" "$FRONTEND_PID_FILE"
+  stop_service "MCP server" "$MCP_PID_FILE"
+  stop_service "backend"    "$BACKEND_PID_FILE"
+  stop_service "frontend"   "$FRONTEND_PID_FILE"
   echo ""
 }
 
@@ -250,14 +306,19 @@ cmd_status() {
   bold "code-graph dev — status"
   echo ""
   if is_running "$BACKEND_PID_FILE"; then
-    green "  ✓ backend  running (pid $(cat "$BACKEND_PID_FILE"))  http://localhost:8000"
+    green "  ✓ backend     running (pid $(cat "$BACKEND_PID_FILE"))  http://localhost:8000"
   else
-    red   "  ✗ backend  not running"
+    red   "  ✗ backend     not running"
   fi
   if is_running "$FRONTEND_PID_FILE"; then
-    green "  ✓ frontend running (pid $(cat "$FRONTEND_PID_FILE"))  http://localhost:5173"
+    green "  ✓ frontend    running (pid $(cat "$FRONTEND_PID_FILE"))  http://localhost:5173"
   else
-    red   "  ✗ frontend not running"
+    red   "  ✗ frontend    not running"
+  fi
+  if is_running "$MCP_PID_FILE"; then
+    green "  ✓ MCP server  running (pid $(cat "$MCP_PID_FILE"))  http://localhost:8001/sse"
+  else
+    yellow "  · MCP server  not running  (start with './dev.sh mcp')"
   fi
   echo ""
 }
@@ -271,7 +332,9 @@ cmd_logs() {
   fi
   bold "Tailing logs (Ctrl-C to stop)…"
   echo ""
-  tail -f "$BACKEND_LOG" "$FRONTEND_LOG"
+  local logs=("$BACKEND_LOG" "$FRONTEND_LOG")
+  [[ -f "$MCP_LOG" ]] && logs+=("$MCP_LOG")
+  tail -f "${logs[@]}"
 }
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
@@ -282,8 +345,9 @@ case "${1:-}" in
   restart) cmd_stop; echo ""; cmd_start ;;
   status)  cmd_status ;;
   logs)    cmd_logs ;;
+  mcp)     cmd_mcp ;;
   *)
-    echo "Usage: $0 {start|stop|restart|status|logs}"
+    echo "Usage: $0 {start|stop|restart|status|logs|mcp}"
     exit 1
     ;;
 esac
