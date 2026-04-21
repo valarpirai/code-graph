@@ -40,11 +40,15 @@ export interface FilterState {
 
 export function defaultFilterState(): FilterState {
   return {
+    // Field/Constant/Parameter/LocalVariable are leaf nodes that add visual
+    // noise without aiding structural understanding. Users can re-enable them
+    // from the filter panel. Keeping the default set small also means the
+    // initial layout runs on ~600 nodes instead of 4500+, staying fast enough
+    // for dagre to produce a meaningful hierarchy on first load.
     visibleNodeTypes: new Set<NodeType>([
       "File", "Module",
       "Class", "AbstractClass", "DataClass", "Interface", "Trait", "Enum", "Struct", "Mixin",
       "Function", "Method", "Constructor",
-      "Field", "Constant",
     ]),
     // All edges visible except calls — calls (5k+ edges) creates too much
     // visual noise on first load. Users can enable it from the filter panel.
@@ -53,7 +57,7 @@ export function defaultFilterState(): FilterState {
     showTestFiles: true,
     hiddenVisibilities: new Set(),
     hiddenLanguages: new Set(),
-    layoutName: "cose-bilkent",
+    layoutName: "dagre",
     nodeSpacing: 18000,
     groupByFile: false,
   };
