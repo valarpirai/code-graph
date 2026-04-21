@@ -246,12 +246,12 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
       )}
 
       <Section label="Edge Relations">
-        {ALL_EDGE_RELATIONS.filter((r) => !graphData || edgeRelationCounts.has(r)).map((r) => (
+        {ALL_EDGE_RELATIONS.map((r) => (
           <CheckRow
             key={r}
             label={r}
             color={EDGE_COLORS[r]}
-            count={edgeRelationCounts.get(r)}
+            count={edgeRelationCounts.size > 0 ? (edgeRelationCounts.get(r) ?? 0) : undefined}
             checked={filters.visibleEdgeRelations.has(r)}
             onChange={() => toggleEdge(r)}
             onOnly={() => onlyEdgeRelation(r)}
@@ -329,17 +329,14 @@ interface NodeTypeSectionProps {
 }
 
 function NodeTypeSection({ label, types, counts, visible, onToggle, onOnly }: NodeTypeSectionProps) {
-  // Only show types that exist in the graph (when data is loaded)
-  const available = counts.size > 0 ? types.filter((t) => counts.has(t)) : types;
-  if (available.length === 0) return null;
   return (
     <Section label={label}>
-      {available.map((t) => (
+      {types.map((t) => (
         <CheckRow
           key={t}
           label={t}
           color={NODE_COLORS[t]}
-          count={counts.get(t)}
+          count={counts.size > 0 ? (counts.get(t) ?? 0) : undefined}
           checked={visible.has(t)}
           onChange={() => onToggle(t)}
           onOnly={() => onOnly(t)}
