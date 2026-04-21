@@ -112,27 +112,19 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
     [languageCounts]
   );
 
-  // IDs of nodes that pass the current node-type filter (for dynamic edge counts)
-  const visibleNodeIds = useMemo(() => {
-    if (!graphData) return new Set<string>();
-    const ids = new Set<string>();
-    for (const { data } of graphData.nodes) {
-      if (filters.visibleNodeTypes.has(data.node_type)) ids.add(data.id);
-    }
-    return ids;
-  }, [graphData, filters.visibleNodeTypes]);
-
-  // Count edges per relation where both endpoints are in visibleNodeIds
+  // Count all edges per relation in the full graph, regardless of which node
+  // types are currently visible. This lets the count reflect "does this
+  // relation exist in the project" rather than "is both endpoints visible
+  // right now" — which would misleadingly show 0 for hasField/hasParameter
+  // whenever Field/Parameter nodes are hidden.
   const edgeRelationCounts = useMemo(() => {
     const counts = new Map<EdgeRelation, number>();
     if (!graphData) return counts;
     for (const { data } of graphData.edges) {
-      if (visibleNodeIds.has(data.source) && visibleNodeIds.has(data.target)) {
-        counts.set(data.relation, (counts.get(data.relation) ?? 0) + 1);
-      }
+      counts.set(data.relation, (counts.get(data.relation) ?? 0) + 1);
     }
     return counts;
-  }, [graphData, visibleNodeIds]);
+  }, [graphData]);
 
   const toggleNodeType = (t: NodeType) => {
     const next = new Set(filters.visibleNodeTypes);
