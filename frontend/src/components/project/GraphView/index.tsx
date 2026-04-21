@@ -124,6 +124,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   const [filters, setFilters] = useState<FilterState>(defaultFilterState());
   const [renderProgress, setRenderProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [renderComplete, setRenderComplete] = useState(false);
+  const [layouting, setLayouting] = useState(false);
 
   const { data: graphData, isLoading, isError } = useGraph(projectId);
   const { data: clusterData } = useClusters(projectId);
@@ -286,6 +287,19 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters, renderComplete]);
 
+  // Shared layout runner: shows loading indicator, yields to browser so the
+  // indicator renders before the synchronous layout computation blocks the thread.
+  const runLayout = useCallback(() => {
+    if (!cy) return;
+    setLayouting(true);
+    setTimeout(() => {
+      applyGroupByFile(cy, filters.groupByFile);
+      const l = cy.layout(buildLayoutOptions(filters.layoutName, filters.nodeSpacing, cy.nodes().length));
+      l.one("layoutstop", () => setLayouting(false));
+      l.run();
+    }, 50);
+  }, [cy, filters.groupByFile, filters.layoutName, filters.nodeSpacing]);
+
   // Re-apply layout when algorithm, spacing, or grouping changes.
   // Deliberately excludes renderComplete from deps so it does NOT auto-run
   // on initial render completion — large graphs freeze the browser if layout
@@ -293,11 +307,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
   // changing the algorithm picker.
   useEffect(() => {
     if (!cy || !renderComplete) return;
-    const timer = setTimeout(() => {
-      applyGroupByFile(cy, filters.groupByFile);
-      const opts = buildLayoutOptions(filters.layoutName, filters.nodeSpacing, cy.nodes().length);
-      cy.layout(opts).run();
-    }, 300);
+    const timer = setTimeout(runLayout, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cy, filters.layoutName, filters.nodeSpacing, filters.groupByFile]);
@@ -352,12 +362,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     });
   }, [cy]);
 
-  const handleReLayout = useCallback(() => {
-    if (!cy) return;
-    applyGroupByFile(cy, filters.groupByFile);
-    const opts = buildLayoutOptions(filters.layoutName, filters.nodeSpacing, cy.nodes().length);
-    cy.layout(opts).run();
-  }, [cy, filters.groupByFile, filters.layoutName, filters.nodeSpacing]);
+  const handleReLayout = useCallback(() => runLayout(), [runLayout]);
 
   if (isLoading) return <div className="flex-1 flex items-center justify-center text-gray-500 text-sm animate-pulse">Loading graph…</div>;
   if (isError) return <div className="flex-1 flex items-center justify-center text-accent-red text-sm">Failed to load graph.</div>;
@@ -378,24 +383,34 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
           <div className="w-48"><SearchBar onSearch={handleSearch} /></div>
         </div>
         <div ref={containerRef} className="flex-1 bg-surface" />
-        {renderProgress && (
+        {(renderProgress || layouting) && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none w-64">
             <div className="bg-surface-overlay border border-surface-border rounded-lg px-4 py-3 flex flex-col gap-2 shadow-lg">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-300 font-medium">Building graph</span>
-                <span className="text-gray-500 tabular-nums">
-                  {renderProgress.loaded} / {renderProgress.total}
+                <span className="text-gray-300 font-medium">
+                  {renderProgress ? "Building graph" : "Applying layout…"}
                 </span>
+                {renderProgress && (
+                  <span className="text-gray-500 tabular-nums">
+                    {renderProgress.loaded} / {renderProgress.total}
+                  </span>
+                )}
               </div>
               <div className="h-1.5 bg-surface-border rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent-blue rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${Math.round((renderProgress.loaded / renderProgress.total) * 100)}%` }}
-                />
+                {renderProgress ? (
+                  <div
+                    className="h-full bg-accent-blue rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${Math.round((renderProgress.loaded / renderProgress.total) * 100)}%` }}
+                  />
+                ) : (
+                  <div className="h-full w-full bg-accent-blue rounded-full animate-pulse" />
+                )}
               </div>
-              <span className="text-[10px] text-gray-600 tabular-nums">
-                {Math.round((renderProgress.loaded / renderProgress.total) * 100)}%
-              </span>
+              {renderProgress && (
+                <span className="text-[10px] text-gray-600 tabular-nums">
+                  {Math.round((renderProgress.loaded / renderProgress.total) * 100)}%
+                </span>
+              )}
             </div>
           </div>
         )}
