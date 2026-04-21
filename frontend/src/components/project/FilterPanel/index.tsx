@@ -16,6 +16,16 @@ const ALL_EDGE_RELATIONS: EdgeRelation[] = [
 
 export const ALL_VISIBILITIES = ["public", "protected", "private", "abstract"] as const;
 
+export type LayoutName = "cose-bilkent" | "dagre" | "breadthfirst" | "circle" | "grid";
+
+export const LAYOUT_LABELS: Record<LayoutName, string> = {
+  "cose-bilkent": "Force-directed",
+  dagre:          "Hierarchical",
+  breadthfirst:   "Breadth-first",
+  circle:         "Circle",
+  grid:           "Grid",
+};
+
 export interface FilterState {
   visibleNodeTypes: Set<NodeType>;
   visibleEdgeRelations: Set<EdgeRelation>;
@@ -23,6 +33,9 @@ export interface FilterState {
   showTestFiles: boolean;
   hiddenVisibilities: Set<string>;
   hiddenLanguages: Set<string>;
+  layoutName: LayoutName;
+  nodeSpacing: number;
+  groupByFile: boolean;
 }
 
 export function defaultFilterState(): FilterState {
@@ -38,6 +51,9 @@ export function defaultFilterState(): FilterState {
     showTestFiles: true,
     hiddenVisibilities: new Set(),
     hiddenLanguages: new Set(),
+    layoutName: "cose-bilkent",
+    nodeSpacing: 18000,
+    groupByFile: false,
   };
 }
 
@@ -51,6 +67,9 @@ function clearFilterState(): FilterState {
     showTestFiles: true,
     hiddenVisibilities: new Set(),
     hiddenLanguages: new Set(),
+    layoutName: "cose-bilkent",
+    nodeSpacing: 18000,
+    groupByFile: false,
   };
 }
 
@@ -149,6 +168,9 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
     if (filters.visibleEdgeRelations.size !== def.visibleEdgeRelations.size) return false;
     if (filters.hiddenVisibilities.size !== def.hiddenVisibilities.size) return false;
     if (filters.hiddenLanguages.size !== 0) return false;
+    if (filters.layoutName !== def.layoutName) return false;
+    if (filters.nodeSpacing !== def.nodeSpacing) return false;
+    if (filters.groupByFile !== def.groupByFile) return false;
     for (const t of def.visibleNodeTypes) if (!filters.visibleNodeTypes.has(t)) return false;
     for (const r of def.visibleEdgeRelations) if (!filters.visibleEdgeRelations.has(r)) return false;
     return true;
@@ -239,6 +261,48 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
         {ALL_VISIBILITIES.map((v) => (
           <CheckRow key={v} label={v} checked={!filters.hiddenVisibilities.has(v)} onChange={() => toggleVisibility(v)} />
         ))}
+      </Section>
+
+      <Section label="Layout">
+        <select
+          value={filters.layoutName}
+          onChange={(e) => onChange({ ...filters, layoutName: e.target.value as LayoutName })}
+          className="w-full bg-surface border border-surface-border text-gray-300 text-xs rounded px-2 py-1"
+        >
+          {(Object.keys(LAYOUT_LABELS) as LayoutName[]).map((name) => (
+            <option key={name} value={name}>{LAYOUT_LABELS[name]}</option>
+          ))}
+        </select>
+
+        <div className="flex flex-col gap-0.5 mt-1">
+          <div className="flex justify-between text-[10px] text-gray-500">
+            <span>Spacing</span>
+            <span className="tabular-nums">{Math.round(filters.nodeSpacing / 1000)}k</span>
+          </div>
+          <input
+            type="range"
+            min={3000}
+            max={50000}
+            step={1000}
+            value={filters.nodeSpacing}
+            onChange={(e) => onChange({ ...filters, nodeSpacing: Number(e.target.value) })}
+            className="w-full accent-accent-blue"
+          />
+          <div className="flex justify-between text-[10px] text-gray-500">
+            <span>Dense</span>
+            <span>Spread</span>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 cursor-pointer mt-1">
+          <input
+            type="checkbox"
+            checked={filters.groupByFile}
+            onChange={() => onChange({ ...filters, groupByFile: !filters.groupByFile })}
+            className="accent-accent-blue"
+          />
+          <span className="text-gray-300">Group by file</span>
+        </label>
       </Section>
 
       <label className="flex items-center gap-2 cursor-pointer">

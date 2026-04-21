@@ -2,17 +2,20 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import cytoscape from "cytoscape";
 // @ts-expect-error: no types for cose-bilkent
 import coseBilkent from "cytoscape-cose-bilkent";
+// @ts-expect-error: no types for cytoscape-dagre
+import dagre from "cytoscape-dagre";
 import { useGraph, useClusters } from "../../../hooks/useGraph";
 import { baseStylesheet, CLUSTER_PALETTE } from "./cytoscapeConfig";
 import NodeSidePanel from "./NodeSidePanel";
 import MiniMap from "./MiniMap";
 import FilterPanel, { defaultFilterState } from "../FilterPanel/index";
-import type { FilterState } from "../FilterPanel/index";
+import type { FilterState, LayoutName } from "../FilterPanel/index";
 import SearchBar from "../../shared/SearchBar";
 import type { GraphNodeData } from "../../../api/types";
 import { getBlastRadius, getExecutionFlow } from "../../../api/client";
 
 cytoscape.use(coseBilkent);
+cytoscape.use(dagre);
 
 const RENDER_STAGES: readonly string[][] = [
   ["File", "Module"],
@@ -26,6 +29,85 @@ function adaptiveNumIter(nodeCount: number): number {
   if (nodeCount < 300) return 800;
   if (nodeCount < 600) return 350;
   return 150;
+}
+
+function buildLayoutOptions(
+  layoutName: LayoutName,
+  nodeSpacing: number,
+  nodeCount: number,
+): cytoscape.LayoutOptions {
+  switch (layoutName) {
+    case "dagre":
+      return {
+        name: "dagre",
+        animate: false,
+        rankDir: "TB",
+        nodeSep: Math.max(20, nodeSpacing / 500),
+        rankSep: Math.max(40, nodeSpacing / 200),
+        padding: 40,
+      } as cytoscape.LayoutOptions;
+    case "breadthfirst":
+      return {
+        name: "breadthfirst",
+        animate: false,
+        directed: true,
+        spacingFactor: Math.max(0.5, nodeSpacing / 18000),
+        padding: 40,
+      } as cytoscape.LayoutOptions;
+    case "circle":
+      return {
+        name: "circle",
+        animate: false,
+        spacingFactor: Math.max(0.5, nodeSpacing / 18000),
+        padding: 40,
+      } as cytoscape.LayoutOptions;
+    case "grid":
+      return {
+        name: "grid",
+        animate: false,
+        avoidOverlap: true,
+        spacingFactor: Math.max(0.5, nodeSpacing / 18000),
+        padding: 40,
+      } as cytoscape.LayoutOptions;
+    case "cose-bilkent":
+    default:
+      return {
+        name: "cose-bilkent",
+        animate: false,
+        randomize: true,
+        idealEdgeLength: 120,
+        nodeRepulsion: nodeSpacing,
+        nodeDimensionsIncludeLabels: true,
+        padding: 80,
+        gravity: 0.2,
+        numIter: adaptiveNumIter(nodeCount),
+        tile: true,
+      } as cytoscape.LayoutOptions;
+  }
+}
+
+function applyGroupByFile(cy: cytoscape.Core, enabled: boolean): void {
+  if (enabled) {
+    const filePathToId = new Map<string, string>();
+    cy.nodes().forEach((n) => {
+      if (n.data("node_type") === "File") {
+        const fp = n.data("file_path") as string | undefined;
+        if (fp) filePathToId.set(fp, n.id());
+      }
+    });
+    cy.nodes().forEach((n) => {
+      if (n.data("node_type") === "File" || n.data("node_type") === "Module") return;
+      const fp = n.data("file_path") as string | undefined;
+      if (fp) {
+        const fileId = filePathToId.get(fp);
+        if (fileId) n.move({ parent: fileId });
+      }
+    });
+  } else {
+    cy.nodes().forEach((n) => {
+      if (n.isChild()) n.move({ parent: null });
+    });
+  }
 }
 
 interface Props {
@@ -189,18 +271,32 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     if (!cy) return;
     const callableTypes = new Set(["Function", "Method", "Constructor"]);
     cy.nodes().forEach((n) => {
+      const nodeType = n.data("node_type") as string;
+      // File nodes must stay visible when groupByFile is on (they act as compound containers)
+      const forceVisible = filters.groupByFile && nodeType === "File";
       const typeVisible = filters.visibleNodeTypes.has(n.data("node_type"));
       const testVisible = filters.showTestFiles || !n.data("is_test");
-      const visibilityVisible = !callableTypes.has(n.data("node_type")) || (
+      const visibilityVisible = !callableTypes.has(nodeType) || (
         !filters.hiddenVisibilities.has(n.data("visibility") as string) &&
         !(n.data("is_abstract") && filters.hiddenVisibilities.has("abstract"))
       );
       const lang = n.data("language") as string | undefined;
       const langVisible = !lang || filters.hiddenLanguages.size === 0 || !filters.hiddenLanguages.has(lang);
-      n.style("display", typeVisible && testVisible && visibilityVisible && langVisible ? "element" : "none");
+      n.style("display", forceVisible || (typeVisible && testVisible && visibilityVisible && langVisible) ? "element" : "none");
     });
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters, renderComplete]);
+
+  // Re-apply layout when algorithm, spacing, or grouping changes (debounced for spacing slider)
+  useEffect(() => {
+    if (!cy || !renderComplete) return;
+    const timer = setTimeout(() => {
+      applyGroupByFile(cy, filters.groupByFile);
+      const opts = buildLayoutOptions(filters.layoutName, filters.nodeSpacing, cy.nodes().length);
+      cy.layout(opts).run();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [cy, renderComplete, filters.layoutName, filters.nodeSpacing, filters.groupByFile]);
 
   useEffect(() => {
     if (!cy || !linkedNodeId) return;

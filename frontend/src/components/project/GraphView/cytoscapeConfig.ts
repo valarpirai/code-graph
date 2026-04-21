@@ -104,6 +104,31 @@ export const baseStylesheet: Stylesheet[] = [
     },
   },
   {
+    // Compound parent node (file container when groupByFile is on)
+    selector: "node:parent",
+    style: {
+      "background-color": "#0d1117",
+      "background-opacity": 0.7,
+      "border-color": "#30363d",
+      "border-width": 1.5,
+      "border-style": "solid",
+      padding: "18px",
+      label: (ele) => {
+        const raw: string = ele.data("label") ?? "";
+        return raw.length > 28 ? raw.slice(0, 26) + "…" : raw;
+      },
+      "font-size": "10px",
+      color: "#58a6ff",
+      "text-valign": "top",
+      "text-halign": "center",
+      "text-background-color": "#0d1117",
+      "text-background-opacity": 0.9,
+      "text-background-padding": "3px",
+      "min-width": 60,
+      "min-height": 40,
+    },
+  },
+  {
     selector: "node:selected",
     style: {
       "border-width": 3,
