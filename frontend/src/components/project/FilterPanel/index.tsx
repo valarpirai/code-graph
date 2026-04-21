@@ -46,7 +46,10 @@ export function defaultFilterState(): FilterState {
       "Function", "Method", "Constructor",
       "Field", "Constant",
     ]),
-    visibleEdgeRelations: new Set(ALL_EDGE_RELATIONS.filter((r) => r !== "calls")),
+    // Show only the semantically meaningful edges by default.
+    // Internal structural edges (defines, hasMethod, hasField, hasParameter)
+    // add thousands of lines and are better explored on demand.
+    visibleEdgeRelations: new Set<EdgeRelation>(["calls", "inherits", "implements", "imports", "mixes"]),
     showClusters: false,
     showTestFiles: true,
     hiddenVisibilities: new Set(),
