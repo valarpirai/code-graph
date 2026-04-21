@@ -223,7 +223,7 @@ start_mcp() {
 
   (
     cd "$BACKEND_DIR"
-    nohup "$UV" run python mcp_server.py --transport sse --port 8001 \
+    nohup "$UV" run python mcp_server.py --transport http --port 8001 \
       >> "$MCP_LOG" 2>&1 &
     echo $! > "$MCP_PID_FILE"
     disown $!
@@ -232,9 +232,9 @@ start_mcp() {
   printf "  waiting for MCP server"
   local i=0
   while (( i < 20 )); do
-    if curl -sf --connect-timeout 1 http://localhost:8001/sse &>/dev/null; then
+    if curl -sf --connect-timeout 1 http://localhost:8001/mcp &>/dev/null; then
       echo ""
-      green "  ✓ MCP server ready at http://localhost:8001/sse"
+      green "  ✓ MCP server ready at http://localhost:8001/mcp"
       return
     fi
     if [[ -f "$MCP_PID_FILE" ]] && ! kill -0 "$(cat "$MCP_PID_FILE")" 2>/dev/null; then
@@ -316,7 +316,7 @@ cmd_status() {
     red   "  ✗ frontend    not running"
   fi
   if is_running "$MCP_PID_FILE"; then
-    green "  ✓ MCP server  running (pid $(cat "$MCP_PID_FILE"))  http://localhost:8001/sse"
+    green "  ✓ MCP server  running (pid $(cat "$MCP_PID_FILE"))  http://localhost:8001/mcp"
   else
     yellow "  · MCP server  not running  (start with './dev.sh mcp')"
   fi

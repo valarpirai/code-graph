@@ -145,9 +145,9 @@ The system is designed for a local development workflow where the OS user bounda
 ```bash
 cd backend
 uv sync                                              # install deps including fastmcp
-uv run python mcp_server.py                          # stdio (default)
-uv run python mcp_server.py --transport sse          # HTTP/SSE on :8001
-uv run python mcp_server.py --transport sse --port 9000
+uv run python mcp_server.py                           # stdio (default)
+uv run python mcp_server.py --transport http          # Streamable HTTP on :8001
+uv run python mcp_server.py --transport http --port 9000
 ```
 
 The FastAPI backend must already be running on `:8000` before starting the MCP server.
@@ -205,13 +205,13 @@ Or register globally: `claude mcp add code-graph -- uv --directory /path/to/back
 
 ### Remote / team setup (SSE transport)
 
-Run the MCP server in SSE mode on a shared host:
+Run the MCP server in Streamable HTTP mode on a shared host:
 
 ```bash
-uv run python mcp_server.py --transport sse --host 0.0.0.0 --port 8001
+uv run python mcp_server.py --transport http --host 0.0.0.0 --port 8001
 ```
 
-Then point each client at `http://<host>:8001/sse` instead of using a local command. Note the [security gaps](#known-gaps-designed-for-localtrustd-use) — add authentication before exposing this to a network.
+Then point each client at `http://<host>:8001/mcp` instead of using a local command. Note the [security gaps](#known-gaps-designed-for-localtrustd-use) — add authentication before exposing this to a network.
 
 ### Verifying the connection
 
