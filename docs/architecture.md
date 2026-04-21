@@ -182,9 +182,58 @@ Datatype properties: `name`, `qualifiedName`, `filePath`, `language`, `line`, `v
 
 ---
 
+## Extension Patterns
+
+### Adding a new language parser
+
+1. Create `backend/app/parsing/<language>.py` — subclass `BaseParser`, implement `parse(source: str) -> ParsedFile`
+2. Register in `backend/app/parsing/__init__.py` — add file extensions to the `_REGISTRY` dict pointing to your class
+3. Add a Tree-sitter grammar to `pyproject.toml` dependencies and `uv sync`
+4. Add tests in `backend/tests/test_parsing/test_<language>.py`
+
+### Adding a new API endpoint
+
+1. Add the route to the appropriate router in `backend/app/api/`; create a new file only if the domain is genuinely new
+2. If creating a new router file, mount it in `backend/app/main.py` with `app.include_router(...)`
+3. Follow the prefix convention: `/api/v1/projects/{project_id}/<resource>`
+4. Use `store: ProjectStore = Depends(get_store)` for project data; use `get_project_graph()` for graph access
+
+### Adding a new MCP tool
+
+1. Add `@mcp.tool()` function inside `register(mcp)` in the appropriate `backend/mcp_tools/` module:
+   - `tools_projects.py` — project lifecycle (create, status, delete)
+   - `tools_graph.py` — graph queries and SPARQL
+   - `tools_analysis.py` — structural analysis (blast radius, flow, clusters)
+2. If creating a new module, import it and call `register(mcp)` in `backend/mcp_server.py`.
+
+### Writing SPARQL queries
+
+rdflib has **no subclass inference**. Always enumerate concrete subtypes with `VALUES`:
+
+```sparql
+PREFIX cg: <http://codegraph.dev/ontology#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+# Wrong — misses Method, Constructor:
+SELECT ?fn WHERE { ?fn rdf:type cg:Callable }
+
+# Correct:
+SELECT ?fn WHERE {
+  VALUES ?type { cg:Function cg:Method cg:Constructor }
+  ?fn rdf:type ?type ; cg:name ?name .
+}
+```
+
+Concrete types by category:
+- Callables: `cg:Function`, `cg:Method`, `cg:Constructor`
+- Types: `cg:Class`, `cg:AbstractClass`, `cg:DataClass`, `cg:Interface`, `cg:Trait`, `cg:Enum`, `cg:Struct`, `cg:Mixin`
+- Storage: `cg:Field`, `cg:Parameter`, `cg:LocalVariable`, `cg:Constant`
+
+---
+
 ## Key Gotchas
 
-**Namespace mismatch:** `RDFBuilder` and SPARQL queries use `http://codegraph.dev/ontology#`. `graph_to_networkx.py` uses `http://codegraph.io/ontology#` (test fixture namespace). Analysis endpoints work as long as triples were built consistently.
+**Namespace mismatch:** All production code uses `http://codegraph.dev/ontology#`. `graph_to_networkx.py` uses `http://codegraph.io/ontology#` — this is a test-fixture namespace only. Never use `.io` in new production code or SPARQL queries.
 
 **Dependency injection:** API endpoints use `store: ProjectStore = Depends(get_store)`. Tests override with `app.dependency_overrides[get_store] = lambda: ProjectStore(data_dir=str(tmp_path))`.
 

@@ -52,10 +52,46 @@ npm run test:watch
 docker-compose up --build   # backend :8000, frontend :80
 ```
 
+### Environment
+
+```bash
+# backend/.env
+ANTHROPIC_API_KEY=sk-ant-...   # required for wiki search + NL SPARQL
+DATA_DIR=/data                  # default; override for local dev
+```
+
+AI features (`wiki/search`, `sparql/natural`) return HTTP 503 without `ANTHROPIC_API_KEY`.
+
+---
+
+## API conventions
+
+All REST routes follow: `POST|GET /api/v1/projects/{project_id}/<resource>`
+
+Routers live in `backend/app/api/`. New routers must be mounted in `backend/app/main.py`.
+
 ---
 
 ## Testing
 
+**Test layout:**
+```
+backend/tests/
+  conftest.py        autouse fixture: clears get_settings() LRU cache
+  test_config.py
+  test_analysis/     blast_radius, clustering, execution_flow, graph_to_networkx
+  test_api/          test_projects, test_graph, test_analysis_endpoints, test_wiki_endpoints
+  test_ingestion/    github, zip_handler, language_detector
+  test_models/       project
+  test_parsing/      one file per language (java, python, typescript, …)
+  test_rdf/          builder, graph_store, ontology
+  test_storage/      project_store
+  test_wiki/         generator, sparql_queries
+  test_ws/           indexing_ws
+```
+
 **Backend:** TDD — write failing test first. Use `tmp_path` for disk state. Patch `app.api.analysis.get_project_graph` with an inline `rdflib.Graph` for analysis tests. Use `app.dependency_overrides` for wiki tests.
 
 **Frontend:** vitest + `@testing-library/react`. Wrap in `QueryClientProvider`. Mock with `vi.spyOn(client, "fn").mockResolvedValue(...)`. `vi.mock()` factories must be self-contained (no external variable references).
+
+**Frontend data fetching:** all server state goes through React Query hooks in `hooks/`. Components never call API functions directly — always use or create a hook.
