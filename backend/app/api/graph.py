@@ -90,7 +90,7 @@ def get_graph(project_id: str):
         nodes.append({"data": data})
 
     for s, p, o in g:
-        if p in (CG.calls, CG.inherits, CG.implements, CG.mixes, CG.imports, CG.defines, CG.hasMethod, CG.hasField, CG.hasParameter, CG.containsFile, CG.containsClass, CG.uses):
+        if p in (CG.calls, CG.inherits, CG.implements, CG.mixes, CG.imports, CG.contains, CG.defines, CG.hasMethod, CG.hasField, CG.hasParameter, CG.containsFile, CG.containsClass, CG.uses):
             src, tgt = str(s), str(o)
             if src in node_ids and tgt in node_ids:
                 edges.append({"data": {
@@ -120,7 +120,7 @@ def get_graph_summary(project_id: str):
 
     _EDGE_PREDICATES = {
         CG.calls, CG.inherits, CG.implements, CG.mixes, CG.imports,
-        CG.defines, CG.uses, CG.hasMethod, CG.hasField, CG.hasParameter,
+        CG.contains, CG.defines, CG.uses, CG.hasMethod, CG.hasField, CG.hasParameter,
         CG.containsFile, CG.containsClass,
     }
     edge_counts: dict[str, int] = {}

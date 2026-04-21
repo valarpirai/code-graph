@@ -84,7 +84,7 @@ class RDFBuilder:
         g.add((uri, CG.classKind, Literal(cls.class_kind)))
         if lang:
             g.add((uri, CG.language, Literal(lang)))
-        g.add((file_uri, CG.defines, uri))
+        g.add((file_uri, CG.contains, uri))
         for base in cls.inherits:
             g.add((uri, CG.inherits, _uri(project_id, "class", base)))
         for iface in cls.implements:
