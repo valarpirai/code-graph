@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class ProjectStatus(str, Enum):
     PENDING = "pending"
+    CLONING = "cloning"
     INDEXING = "indexing"
     READY = "ready"
     ERROR = "error"
@@ -13,6 +14,8 @@ class ProjectMeta(BaseModel):
     id: str
     name: str
     source: str                          # GitHub URL or zip filename
+    branch: Optional[str] = None         # active branch for GitHub projects
+    is_stale: bool = False               # True when source changed but not yet reindexed
     languages: list[str] = []
     status: ProjectStatus = ProjectStatus.PENDING
     error_message: Optional[str] = None

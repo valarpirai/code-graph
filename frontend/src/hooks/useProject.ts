@@ -4,6 +4,9 @@ import {
   getProject,
   deleteProject,
   reindexProject,
+  pullProject,
+  switchBranch,
+  listBranches,
 } from "../api/client";
 
 export const projectKeys = {
@@ -44,5 +47,35 @@ export function useReindexProject() {
     onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: projectKeys.detail(id) });
     },
+  });
+}
+
+export function usePullProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: pullProject,
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: projectKeys.detail(id) });
+    },
+  });
+}
+
+export function useSwitchBranch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, branch }: { id: string; branch: string }) =>
+      switchBranch(id, branch),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: projectKeys.detail(id) });
+    },
+  });
+}
+
+export function useBranches(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["projects", id, "branches"] as const,
+    queryFn: () => listBranches(id),
+    enabled,
+    staleTime: 60_000,
   });
 }

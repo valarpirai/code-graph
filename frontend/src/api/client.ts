@@ -61,6 +61,18 @@ export const deleteProject = (id: string) =>
 export const reindexProject = (id: string) =>
   apiFetch<Project>(`/api/v1/projects/${id}/reindex`, { method: "POST" });
 
+export const pullProject = (id: string) =>
+  apiFetch<Project>(`/api/v1/projects/${id}/pull`, { method: "POST" });
+
+export const switchBranch = (id: string, branch: string) =>
+  apiFetch<Project>(`/api/v1/projects/${id}/branch`, {
+    method: "POST",
+    body: JSON.stringify({ branch }),
+  });
+
+export const listBranches = (id: string) =>
+  apiFetch<string[]>(`/api/v1/projects/${id}/branches`);
+
 // ── Graph ─────────────────────────────────────────────────────────────────────
 
 export const getGraph = (id: string) =>

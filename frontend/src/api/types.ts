@@ -12,6 +12,8 @@ export interface Project {
   name: string;
   status: ProjectStatus;
   source: string;
+  branch?: string;
+  is_stale?: boolean;
   languages: string[];
   last_indexed?: string;
   node_count?: number;

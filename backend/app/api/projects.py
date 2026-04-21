@@ -4,6 +4,7 @@ import uuid
 import io
 import shutil
 from pathlib import Path
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from app.dependencies import get_store
@@ -13,6 +14,7 @@ from app.indexer import Indexer
 from app.ws.indexing import notifier, IndexingEvent
 from app.ingestion.github import (
     validate_github_url, check_repo_public, clone_repo,
+    pull_repo, checkout_branch, list_remote_branches,
     GitHubURLError, RepoNotAccessibleError, GitHubAPIUnavailableError,
 )
 from app.ingestion.zip_handler import extract_zip, ZipTooLargeError, InvalidZipError, ZipSlipError
@@ -147,7 +149,7 @@ def delete_project(project_id: str, store: ProjectStore = Depends(get_store)):
 @router.post("/{project_id}/reindex", response_model=ProjectMeta)
 async def reindex_project(project_id: str, store: ProjectStore = Depends(get_store)):
     try:
-        store.load(project_id)
+        meta = store.load(project_id)
     except KeyError:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Project not found"})
 
@@ -155,7 +157,69 @@ async def reindex_project(project_id: str, store: ProjectStore = Depends(get_sto
     if wiki_dir.exists():
         shutil.rmtree(wiki_dir)
 
+    meta.is_stale = False
+    store.save(meta)
     store.update_status(project_id, ProjectStatus.INDEXING)
     source_dir = store.source_dir(project_id)
     asyncio.create_task(_run_indexing(project_id, source_dir, store))
     return store.load(project_id)
+
+
+class _BranchPayload(BaseModel):
+    branch: str
+
+
+@router.get("/{project_id}/branches", response_model=list[str])
+def get_branches(project_id: str, store: ProjectStore = Depends(get_store)):
+    try:
+        meta = store.load(project_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Project not found"})
+    if not meta.source.startswith("http"):
+        raise HTTPException(status_code=400, detail={"error": "not_github", "message": "Only GitHub projects have branches"})
+    source_dir = store.source_dir(project_id)
+    try:
+        return list_remote_branches(source_dir)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail={"error": "git_error", "message": str(e)})
+
+
+@router.post("/{project_id}/pull", response_model=ProjectMeta)
+async def pull_project(project_id: str, store: ProjectStore = Depends(get_store)):
+    try:
+        meta = store.load(project_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Project not found"})
+    if not meta.source.startswith("http"):
+        raise HTTPException(status_code=400, detail={"error": "not_github", "message": "Only GitHub projects support pull"})
+    source_dir = store.source_dir(project_id)
+    try:
+        pull_repo(source_dir)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail={"error": "git_error", "message": str(e)})
+    meta.is_stale = True
+    store.save(meta)
+    return meta
+
+
+@router.post("/{project_id}/branch", response_model=ProjectMeta)
+async def switch_branch(
+    project_id: str,
+    payload: _BranchPayload,
+    store: ProjectStore = Depends(get_store),
+):
+    try:
+        meta = store.load(project_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Project not found"})
+    if not meta.source.startswith("http"):
+        raise HTTPException(status_code=400, detail={"error": "not_github", "message": "Only GitHub projects support branch switching"})
+    source_dir = store.source_dir(project_id)
+    try:
+        checkout_branch(source_dir, payload.branch)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail={"error": "git_error", "message": str(e)})
+    meta.branch = payload.branch
+    meta.is_stale = True
+    store.save(meta)
+    return meta

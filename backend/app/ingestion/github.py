@@ -43,8 +43,43 @@ async def check_repo_public(owner: str, repo: str) -> bool:
             "Repository is private or does not exist. Only public repos are supported."
         )
 
-def clone_repo(owner: str, repo: str, dest: Path) -> None:
+def clone_repo(owner: str, repo: str, dest: Path, branch: str | None = None) -> None:
     """Shallow-clone a public GitHub repo into dest."""
     url = f"https://github.com/{owner}/{repo}.git"
     dest.mkdir(parents=True, exist_ok=True)
-    git.Repo.clone_from(url, dest, depth=1, single_branch=True)
+    kwargs: dict = {"depth": 1, "single_branch": True}
+    if branch:
+        kwargs["branch"] = branch
+    git.Repo.clone_from(url, dest, **kwargs)
+
+
+def pull_repo(dest: Path) -> None:
+    """Pull latest commits on the current branch (shallow)."""
+    repo = git.Repo(dest)
+    repo.remotes.origin.pull(depth=1)
+
+
+def checkout_branch(dest: Path, branch: str) -> None:
+    """Fetch and switch to a different branch."""
+    repo = git.Repo(dest)
+    repo.remotes.origin.fetch(
+        refspec=f"refs/heads/{branch}:refs/remotes/origin/{branch}",
+        depth=1,
+    )
+    if branch in [b.name for b in repo.branches]:
+        repo.git.checkout(branch)
+        repo.git.reset("--hard", f"origin/{branch}")
+    else:
+        repo.git.checkout("-b", branch, f"origin/{branch}")
+
+
+def list_remote_branches(dest: Path) -> list[str]:
+    """List all branches available on the remote (no fetch required)."""
+    repo = git.Repo(dest)
+    raw = repo.git.ls_remote("--heads", "origin")
+    branches: list[str] = []
+    for line in raw.strip().splitlines():
+        if "\t" in line:
+            ref = line.split("\t")[1]
+            branches.append(ref.removeprefix("refs/heads/"))
+    return sorted(branches)
