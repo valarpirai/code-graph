@@ -35,12 +35,17 @@ EXTENSION_MAP: dict[str, str] = {
     ".properties": "properties",
 }
 
+_PROGRAMMING_LANGUAGES = {
+    "java", "typescript", "javascript", "go", "rust",
+    "kotlin", "ruby", "c", "python",
+}
+
 def detect_languages(root: Path) -> list[str]:
-    """Return deduplicated sorted list of detected language names under root."""
+    """Return deduplicated sorted list of programming languages found under root."""
     found: set[str] = set()
     for path in root.rglob("*"):
         if path.is_file():
             lang = EXTENSION_MAP.get(path.suffix.lower())
-            if lang:
+            if lang and lang in _PROGRAMMING_LANGUAGES:
                 found.add(lang)
     return sorted(found)

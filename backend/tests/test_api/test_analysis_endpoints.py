@@ -89,9 +89,9 @@ def test_sparql_valid_query(client):
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert "columns" in body
-    assert "rows" in body
-    assert isinstance(body["rows"], list)
+    assert "variables" in body
+    assert "results" in body
+    assert isinstance(body["results"]["bindings"], list)
 
 
 def test_sparql_invalid_query_returns_422(client):

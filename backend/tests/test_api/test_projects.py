@@ -71,7 +71,7 @@ async def test_create_project_from_github_url(tmp_path):
     data = resp.json()
     assert data["name"] == "bar"
     assert data["languages"] == ["go"]
-    assert data["status"] == "ready"
+    assert data["status"] == "indexing"
 
 @pytest.mark.asyncio
 async def test_create_project_clone_fails_returns_error_status(tmp_path):
@@ -106,7 +106,7 @@ async def test_upload_zip_success(tmp_path):
             resp = await c.post("/api/v1/projects/upload", files={"file": ("repo.zip", zip_bytes, "application/zip")})
     app.dependency_overrides.clear()
     assert resp.status_code == 201
-    assert resp.json()["status"] == "ready"
+    assert resp.json()["status"] == "indexing"
     assert resp.json()["languages"] == ["java"]
 
 @pytest.mark.asyncio
