@@ -54,7 +54,6 @@ export type EdgeRelation =
   | "inherits"
   | "implements"
   | "mixes"
-  | "contains"
   | "containsFile"
   | "containsClass"
   | "defines"

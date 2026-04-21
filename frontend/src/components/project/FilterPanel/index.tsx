@@ -10,7 +10,7 @@ const OTHER_NODES: NodeType[] = ["File", "Module", "ExternalSymbol"];
 
 const ALL_EDGE_RELATIONS: EdgeRelation[] = [
   "calls", "imports", "inherits", "implements", "mixes",
-  "contains", "containsFile", "containsClass",
+  "containsFile", "containsClass",
   "defines", "uses", "hasMethod", "hasField", "hasParameter",
 ];
 

@@ -21,7 +21,7 @@ describe("HierarchyView", () => {
         { data: { id: "n1", label: "main.py", node_type: "File" } },
         { data: { id: "n2", label: "MyClass", node_type: "Class" } },
       ],
-      edges: [{ data: { id: "e1", source: "n1", target: "n2", relation: "contains" } }],
+      edges: [{ data: { id: "e1", source: "n1", target: "n2", relation: "containsFile" } }],
     });
     render(<HierarchyView projectId="p1" />, { wrapper: Wrapper });
     await screen.findByText("main.py");
