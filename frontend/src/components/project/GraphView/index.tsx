@@ -174,22 +174,26 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       instance.add([...newNodes, ...newEdges]);
       setRenderProgress({ loaded: loadedIds.size, total: graphData.nodes.length });
 
-      // Yield to the browser so React commits the progress update before the
-      // blocking layout computation starts (prevents UI appearing frozen).
+      // Yield to browser so React commits the progress update before any
+      // blocking computation starts.
       setTimeout(() => {
         const newEles = instance.nodes().filter(n => newNodeIds.has(n.id()));
+        const totalNodes = instance.nodes().length;
 
-        if (stageIndex >= 3) {
-          // Storage nodes (stage 3) can number in the hundreds. Position them in a
-          // simple grid manually — avoids cose-bilkent's O(n²) cost AND skips the
-          // layout event system (collection.layout layoutstop is unreliable for subsets).
-          // startBatch/endBatch batches all position writes into a single canvas redraw.
-          const bb = instance.nodes().difference(newEles).boundingBox();
-          const cols = Math.max(1, Math.ceil(Math.sqrt(newEles.length())));
+        // Use fast manual grid for any stage with > 400 total nodes.
+        // cose-bilkent is O(n²) and blocks the main thread for hundreds of
+        // nodes; the post-render layout effect will apply the proper
+        // force-directed pass once all stages complete.
+        if (stageIndex >= 3 || totalNodes > 400) {
+          const existing = instance.nodes().difference(newEles);
+          const bb = existing.length
+            ? existing.boundingBox()
+            : { x1: 0, y1: 0, x2: 800, y2: 600 };
+          const cols = Math.max(1, Math.ceil(Math.sqrt(newNodes.length)));
           let i = 0;
           instance.startBatch();
           newEles.forEach((n) => {
-            n.position({ x: bb.x1 + (i % cols) * 160, y: bb.y2 + 100 + Math.floor(i / cols) * 70 });
+            n.position({ x: bb.x1 + (i % cols) * 140, y: bb.y2 + 100 + Math.floor(i / cols) * 70 });
             i++;
           });
           instance.endBatch();
@@ -197,26 +201,21 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
           return;
         }
 
-        // Spread new nodes around the existing bounding box before layout so they
-        // don't all start at (0,0) and overlap once cose-bilkent begins with
-        // randomize:false (which only preserves positions of already-placed nodes).
-        const newCount = newNodes.length;
-        if (stageIndex > 0 && newCount > 0) {
+        // Small stages only (total ≤ 400): run cose-bilkent with conservative
+        // params. Pre-scatter new nodes so they don't all start at (0,0).
+        if (stageIndex > 0 && newNodes.length > 0) {
           const existing = instance.nodes().difference(newEles);
-          const bb = existing.length
+          const ebb = existing.length
             ? existing.boundingBox()
             : { x1: 0, y1: 0, x2: 600, y2: 400, w: 600, h: 400 };
-          const cx = (bb.x1 + bb.x2) / 2;
-          const cy = (bb.y1 + bb.y2) / 2;
-          const r = Math.max(bb.w, bb.h) * 0.7 + 200;
-          const step = (2 * Math.PI) / newCount;
+          const cx = (ebb.x1 + ebb.x2) / 2;
+          const ecy = (ebb.y1 + ebb.y2) / 2;
+          const r = Math.max(ebb.w ?? 600, ebb.h ?? 400) * 0.6 + 150;
+          const step = (2 * Math.PI) / newNodes.length;
           let si = 0;
           instance.startBatch();
           newEles.forEach((n) => {
-            n.position({
-              x: cx + r * Math.cos(si * step),
-              y: cy + r * Math.sin(si * step),
-            });
+            n.position({ x: cx + r * Math.cos(si * step), y: ecy + r * Math.sin(si * step) });
             si++;
           });
           instance.endBatch();
@@ -226,12 +225,12 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
           name: "cose-bilkent",
           animate: false,
           randomize: stageIndex === 0,
-          idealEdgeLength: 120,
-          nodeRepulsion: 18000,
+          idealEdgeLength: 100,
+          nodeRepulsion: 12000,
           nodeDimensionsIncludeLabels: true,
-          padding: 80,
-          gravity: 0.2,
-          numIter: adaptiveNumIter(instance.nodes().length),
+          padding: 60,
+          gravity: 0.25,
+          numIter: adaptiveNumIter(totalNodes),
           tile: true,
         } as cytoscape.LayoutOptions);
 
