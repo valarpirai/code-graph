@@ -232,7 +232,7 @@ start_mcp() {
   printf "  waiting for MCP server"
   local i=0
   while (( i < 20 )); do
-    if curl -sf --connect-timeout 1 http://localhost:8001/mcp &>/dev/null; then
+    if nc -z localhost 8001 2>/dev/null; then
       echo ""
       green "  ✓ MCP server ready at http://localhost:8001/mcp"
       return
