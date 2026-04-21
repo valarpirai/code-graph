@@ -60,9 +60,19 @@ def _detect_language(path: Path) -> str:
 
 
 class Indexer:
-    async def run(self, project_id: str, source_dir: Path, data_dir: Path, notifier=None):
+    async def run(
+        self,
+        project_id: str,
+        source_dir: Path,
+        data_dir: Path,
+        notifier=None,
+        include_languages: set[str] | None = None,
+    ):
         parsed_files: list[ParsedFile] = []
         paths = [p for p in source_dir.rglob("*") if p.is_file() and not _should_skip(p, source_dir)]
+
+        if include_languages:
+            paths = [p for p in paths if _detect_language(p) in include_languages]
 
         for i, path in enumerate(paths):
             rel_path = str(path.relative_to(source_dir))

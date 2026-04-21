@@ -43,8 +43,9 @@ export function useDeleteProject() {
 export function useReindexProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: reindexProject,
-    onSuccess: (_data, id) => {
+    mutationFn: ({ id, includeLanguages }: { id: string; includeLanguages?: string[] }) =>
+      reindexProject(id, includeLanguages),
+    onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: projectKeys.detail(id) });
     },
   });

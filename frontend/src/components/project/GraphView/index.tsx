@@ -97,22 +97,36 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       setTimeout(() => {
         const newEles = instance.nodes().filter(n => newNodeIds.has(n.id()));
 
-        // Storage nodes (stage 3) can number in the hundreds and cause multi-second
-        // freezes with cose-bilkent's O(n²) algorithm. Grid layout is O(n) and instant.
-        const layout: cytoscape.Layouts = stageIndex >= 3
-          ? newEles.layout({ name: "grid", animate: false, avoidOverlap: true } as cytoscape.LayoutOptions)
-          : instance.layout({
-              name: "cose-bilkent",
-              animate: false,
-              randomize: stageIndex === 0,
-              idealEdgeLength: 120,
-              nodeRepulsion: 12000,
-              nodeDimensionsIncludeLabels: true,
-              padding: 60,
-              gravity: 0.15,
-              numIter: adaptiveNumIter(instance.nodes().length),
-              tile: true,
-            } as cytoscape.LayoutOptions);
+        if (stageIndex >= 3) {
+          // Storage nodes (stage 3) can number in the hundreds. Position them in a
+          // simple grid manually — avoids cose-bilkent's O(n²) cost AND skips the
+          // layout event system (collection.layout layoutstop is unreliable for subsets).
+          // startBatch/endBatch batches all position writes into a single canvas redraw.
+          const bb = instance.nodes().difference(newEles).boundingBox();
+          const cols = Math.max(1, Math.ceil(Math.sqrt(newEles.length())));
+          let i = 0;
+          instance.startBatch();
+          newEles.forEach((n) => {
+            n.position({ x: bb.x1 + (i % cols) * 55, y: bb.y2 + 80 + Math.floor(i / cols) * 45 });
+            i++;
+          });
+          instance.endBatch();
+          setTimeout(() => runStage(stageIndex + 1), 50);
+          return;
+        }
+
+        const layout = instance.layout({
+          name: "cose-bilkent",
+          animate: false,
+          randomize: stageIndex === 0,
+          idealEdgeLength: 120,
+          nodeRepulsion: 12000,
+          nodeDimensionsIncludeLabels: true,
+          padding: 60,
+          gravity: 0.15,
+          numIter: adaptiveNumIter(instance.nodes().length),
+          tile: true,
+        } as cytoscape.LayoutOptions);
 
         layout.on("layoutstop", () => setTimeout(() => runStage(stageIndex + 1), 50));
         layout.run();

@@ -24,7 +24,12 @@ router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
 MAX_ZIP_BYTES = 200 * 1024 * 1024
 
 
-async def _run_indexing(project_id: str, source_dir: Path, store: ProjectStore) -> None:
+async def _run_indexing(
+    project_id: str,
+    source_dir: Path,
+    store: ProjectStore,
+    include_languages: set[str] | None = None,
+) -> None:
     """Run the indexer in the background and update project status."""
     async def _notify(msg: dict) -> None:
         if msg.get("type") == "progress":
@@ -38,7 +43,11 @@ async def _run_indexing(project_id: str, source_dir: Path, store: ProjectStore) 
         await notifier.notify(project_id, event)
 
     try:
-        await Indexer().run(project_id, source_dir, store.data_dir, notifier=_notify)
+        await Indexer().run(
+            project_id, source_dir, store.data_dir,
+            notifier=_notify,
+            include_languages=include_languages or None,
+        )
         store.update_status(project_id, ProjectStatus.READY)
     except Exception as e:
         store.update_status(project_id, ProjectStatus.ERROR, error_message=str(e))
@@ -146,8 +155,16 @@ def delete_project(project_id: str, store: ProjectStore = Depends(get_store)):
     return Response(status_code=204)
 
 
+class _ReindexPayload(BaseModel):
+    include_languages: list[str] = []
+
+
 @router.post("/{project_id}/reindex", response_model=ProjectMeta)
-async def reindex_project(project_id: str, store: ProjectStore = Depends(get_store)):
+async def reindex_project(
+    project_id: str,
+    payload: _ReindexPayload = _ReindexPayload(),
+    store: ProjectStore = Depends(get_store),
+):
     try:
         meta = store.load(project_id)
     except KeyError:
@@ -158,10 +175,12 @@ async def reindex_project(project_id: str, store: ProjectStore = Depends(get_sto
         shutil.rmtree(wiki_dir)
 
     meta.is_stale = False
+    meta.include_languages = payload.include_languages
     store.save(meta)
     store.update_status(project_id, ProjectStatus.INDEXING)
     source_dir = store.source_dir(project_id)
-    asyncio.create_task(_run_indexing(project_id, source_dir, store))
+    include_set = set(payload.include_languages) if payload.include_languages else None
+    asyncio.create_task(_run_indexing(project_id, source_dir, store, include_languages=include_set))
     return store.load(project_id)
 
 

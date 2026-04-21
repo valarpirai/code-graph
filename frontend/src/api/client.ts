@@ -58,8 +58,11 @@ export const uploadProjectZip = (file: File) => {
 export const deleteProject = (id: string) =>
   apiFetch<void>(`/api/v1/projects/${id}`, { method: "DELETE" });
 
-export const reindexProject = (id: string) =>
-  apiFetch<Project>(`/api/v1/projects/${id}/reindex`, { method: "POST" });
+export const reindexProject = (id: string, includeLanguages: string[] = []) =>
+  apiFetch<Project>(`/api/v1/projects/${id}/reindex`, {
+    method: "POST",
+    body: JSON.stringify({ include_languages: includeLanguages }),
+  });
 
 export const pullProject = (id: string) =>
   apiFetch<Project>(`/api/v1/projects/${id}/pull`, { method: "POST" });

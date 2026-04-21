@@ -15,6 +15,7 @@ export interface Project {
   branch?: string;
   is_stale?: boolean;
   languages: string[];
+  include_languages?: string[];
   last_indexed?: string;
   node_count?: number;
   edge_count?: number;

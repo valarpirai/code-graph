@@ -17,12 +17,39 @@ export default function ProjectHeader({ project }: Props) {
   const reindex = useReindexProject();
   const pull = usePullProject();
   const switchBranch = useSwitchBranch();
+
   const [branchOpen, setBranchOpen] = useState(false);
+  const [reindexOpen, setReindexOpen] = useState(false);
+  // Selected languages for next reindex — initialise from stored project setting
+  const [selectedLangs, setSelectedLangs] = useState<Set<string>>(
+    () => new Set(project.include_languages ?? [])
+  );
 
   const github = isGitHub(project);
   const isActive = project.status === "indexing" || project.status === "cloning";
 
   const { data: branches } = useBranches(project.id, github && branchOpen);
+
+  const allLangs = project.languages;
+  const filterActive = selectedLangs.size > 0 && selectedLangs.size < allLangs.length;
+
+  const toggleLang = (lang: string) => {
+    setSelectedLangs((prev) => {
+      const next = new Set(prev);
+      next.has(lang) ? next.delete(lang) : next.add(lang);
+      return next;
+    });
+  };
+
+  const handleReindex = () => {
+    setReindexOpen(false);
+    reindex.mutate({
+      id: project.id,
+      includeLanguages: selectedLangs.size > 0 && selectedLangs.size < allLangs.length
+        ? Array.from(selectedLangs)
+        : [],
+    });
+  };
 
   return (
     <header className="flex items-center gap-3 px-4 py-2.5 border-b border-surface-border bg-surface-elevated shrink-0">
@@ -119,14 +146,68 @@ export default function ProjectHeader({ project }: Props) {
         </button>
       )}
 
-      {/* Re-index */}
-      <button
-        onClick={() => reindex.mutate(project.id)}
-        disabled={reindex.isPending || isActive}
-        className="btn-ghost text-xs px-3 py-1.5"
-      >
-        {reindex.isPending ? "…" : "Re-index"}
-      </button>
+      {/* Re-index with language filter */}
+      <div className="relative">
+        <div className="flex items-center">
+          <button
+            onClick={handleReindex}
+            disabled={reindex.isPending || isActive}
+            className="btn-ghost text-xs px-3 py-1.5 rounded-r-none border-r border-surface-border"
+          >
+            {reindex.isPending ? "…" : filterActive ? `Re-index (${selectedLangs.size})` : "Re-index"}
+          </button>
+          {allLangs.length > 1 && (
+            <button
+              onClick={() => setReindexOpen((v) => !v)}
+              disabled={isActive}
+              className="btn-ghost text-xs px-2 py-1.5 rounded-l-none"
+              title="Filter languages for re-index"
+            >
+              ▾
+            </button>
+          )}
+        </div>
+
+        {reindexOpen && (
+          <div className="absolute right-0 top-full mt-1 z-20 bg-surface-elevated border border-surface-border rounded shadow-lg min-w-44 p-2">
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2 px-1">
+              Index languages
+            </div>
+            {allLangs.map((lang) => (
+              <label key={lang} className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-surface rounded">
+                <input
+                  type="checkbox"
+                  checked={selectedLangs.size === 0 || selectedLangs.has(lang)}
+                  onChange={() => {
+                    // When all are selected and user unchecks one, init the set with all except that one
+                    if (selectedLangs.size === 0) {
+                      setSelectedLangs(new Set(allLangs.filter((l) => l !== lang)));
+                    } else {
+                      toggleLang(lang);
+                    }
+                  }}
+                  className="accent-accent-blue"
+                />
+                <span className="text-xs text-gray-300">{lang}</span>
+              </label>
+            ))}
+            <div className="mt-2 flex gap-1">
+              <button
+                onClick={() => setSelectedLangs(new Set())}
+                className="flex-1 text-[10px] text-gray-500 hover:text-gray-300 py-1"
+              >
+                All
+              </button>
+              <button
+                onClick={handleReindex}
+                className="flex-1 btn-ghost text-[10px] py-1"
+              >
+                Apply & Re-index
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
