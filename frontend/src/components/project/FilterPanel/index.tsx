@@ -22,6 +22,7 @@ export interface FilterState {
   showClusters: boolean;
   showTestFiles: boolean;
   hiddenVisibilities: Set<string>;
+  hiddenLanguages: Set<string>;
 }
 
 export function defaultFilterState(): FilterState {
@@ -36,6 +37,7 @@ export function defaultFilterState(): FilterState {
     showClusters: false,
     showTestFiles: true,
     hiddenVisibilities: new Set(),
+    hiddenLanguages: new Set(),
   };
 }
 
@@ -48,6 +50,7 @@ function clearFilterState(): FilterState {
     showClusters: false,
     showTestFiles: true,
     hiddenVisibilities: new Set(),
+    hiddenLanguages: new Set(),
   };
 }
 
@@ -68,6 +71,21 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
     }
     return counts;
   }, [graphData]);
+
+  // Sorted list of languages present in the graph with per-language node counts
+  const languageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (!graphData) return counts;
+    for (const { data } of graphData.nodes) {
+      if (data.language) counts.set(data.language, (counts.get(data.language) ?? 0) + 1);
+    }
+    return counts;
+  }, [graphData]);
+
+  const sortedLanguages = useMemo(
+    () => Array.from(languageCounts.keys()).sort(),
+    [languageCounts]
+  );
 
   // IDs of nodes that pass the current node-type filter (for dynamic edge counts)
   const visibleNodeIds = useMemo(() => {
@@ -112,6 +130,16 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
     next.has(v) ? next.delete(v) : next.add(v);
     onChange({ ...filters, hiddenVisibilities: next });
   };
+  const toggleLanguage = (lang: string) => {
+    const next = new Set(filters.hiddenLanguages);
+    next.has(lang) ? next.delete(lang) : next.add(lang);
+    onChange({ ...filters, hiddenLanguages: next });
+  };
+  const onlyLanguage = (lang: string) => {
+    const allLangs = new Set(sortedLanguages);
+    allLangs.delete(lang);
+    onChange({ ...filters, hiddenLanguages: allLangs });
+  };
 
   const isDefault = useMemo(() => {
     const def = defaultFilterState();
@@ -120,6 +148,7 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
     if (filters.visibleNodeTypes.size !== def.visibleNodeTypes.size) return false;
     if (filters.visibleEdgeRelations.size !== def.visibleEdgeRelations.size) return false;
     if (filters.hiddenVisibilities.size !== def.hiddenVisibilities.size) return false;
+    if (filters.hiddenLanguages.size !== 0) return false;
     for (const t of def.visibleNodeTypes) if (!filters.visibleNodeTypes.has(t)) return false;
     for (const r of def.visibleEdgeRelations) if (!filters.visibleEdgeRelations.has(r)) return false;
     return true;
@@ -176,6 +205,21 @@ export default function FilterPanel({ filters, onChange, graphData }: Props) {
         onToggle={toggleNodeType}
         onOnly={onlyNodeType}
       />
+
+      {sortedLanguages.length > 0 && (
+        <Section label="Languages">
+          {sortedLanguages.map((lang) => (
+            <CheckRow
+              key={lang}
+              label={lang}
+              count={languageCounts.get(lang)}
+              checked={!filters.hiddenLanguages.has(lang)}
+              onChange={() => toggleLanguage(lang)}
+              onOnly={() => onlyLanguage(lang)}
+            />
+          ))}
+        </Section>
+      )}
 
       <Section label="Edge Relations">
         {ALL_EDGE_RELATIONS.filter((r) => !graphData || edgeRelationCounts.has(r)).map((r) => (

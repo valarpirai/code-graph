@@ -156,7 +156,9 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
         !filters.hiddenVisibilities.has(n.data("visibility") as string) &&
         !(n.data("is_abstract") && filters.hiddenVisibilities.has("abstract"))
       );
-      n.style("display", typeVisible && testVisible && visibilityVisible ? "element" : "none");
+      const lang = n.data("language") as string | undefined;
+      const langVisible = !lang || filters.hiddenLanguages.size === 0 || !filters.hiddenLanguages.has(lang);
+      n.style("display", typeVisible && testVisible && visibilityVisible && langVisible ? "element" : "none");
     });
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters, renderComplete]);
