@@ -9,7 +9,7 @@ import MiniMap from "./MiniMap";
 import FilterPanel, { defaultFilterState } from "../FilterPanel/index";
 import type { FilterState } from "../FilterPanel/index";
 import SearchBar from "../../shared/SearchBar";
-import type { GraphNodeData, GraphResponse } from "../../../api/types";
+import type { GraphNodeData } from "../../../api/types";
 import { getBlastRadius, getExecutionFlow } from "../../../api/client";
 
 cytoscape.use(coseBilkent);
@@ -107,7 +107,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
           let i = 0;
           instance.startBatch();
           newEles.forEach((n) => {
-            n.position({ x: bb.x1 + (i % cols) * 55, y: bb.y2 + 80 + Math.floor(i / cols) * 45 });
+            n.position({ x: bb.x1 + (i % cols) * 160, y: bb.y2 + 100 + Math.floor(i / cols) * 70 });
             i++;
           });
           instance.endBatch();
@@ -115,15 +115,40 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
           return;
         }
 
+        // Spread new nodes around the existing bounding box before layout so they
+        // don't all start at (0,0) and overlap once cose-bilkent begins with
+        // randomize:false (which only preserves positions of already-placed nodes).
+        const newCount = newNodes.length;
+        if (stageIndex > 0 && newCount > 0) {
+          const existing = instance.nodes().difference(newEles);
+          const bb = existing.length
+            ? existing.boundingBox()
+            : { x1: 0, y1: 0, x2: 600, y2: 400, w: 600, h: 400 };
+          const cx = (bb.x1 + bb.x2) / 2;
+          const cy = (bb.y1 + bb.y2) / 2;
+          const r = Math.max(bb.w, bb.h) * 0.7 + 200;
+          const step = (2 * Math.PI) / newCount;
+          let si = 0;
+          instance.startBatch();
+          newEles.forEach((n) => {
+            n.position({
+              x: cx + r * Math.cos(si * step),
+              y: cy + r * Math.sin(si * step),
+            });
+            si++;
+          });
+          instance.endBatch();
+        }
+
         const layout = instance.layout({
           name: "cose-bilkent",
           animate: false,
           randomize: stageIndex === 0,
           idealEdgeLength: 120,
-          nodeRepulsion: 12000,
+          nodeRepulsion: 18000,
           nodeDimensionsIncludeLabels: true,
-          padding: 60,
-          gravity: 0.15,
+          padding: 80,
+          gravity: 0.2,
           numIter: adaptiveNumIter(instance.nodes().length),
           tile: true,
         } as cytoscape.LayoutOptions);
