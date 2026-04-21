@@ -379,9 +379,24 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
         </div>
         <div ref={containerRef} className="flex-1 bg-surface" />
         {renderProgress && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-surface-overlay border border-surface-border text-gray-400 text-xs px-3 py-1.5 rounded-full pointer-events-none">
-            <span className="animate-pulse">●</span>
-            Rendering {renderProgress.loaded} / {renderProgress.total} nodes…
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none w-64">
+            <div className="bg-surface-overlay border border-surface-border rounded-lg px-4 py-3 flex flex-col gap-2 shadow-lg">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-300 font-medium">Building graph</span>
+                <span className="text-gray-500 tabular-nums">
+                  {renderProgress.loaded} / {renderProgress.total}
+                </span>
+              </div>
+              <div className="h-1.5 bg-surface-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent-blue rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${Math.round((renderProgress.loaded / renderProgress.total) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-gray-600 tabular-nums">
+                {Math.round((renderProgress.loaded / renderProgress.total) * 100)}%
+              </span>
+            </div>
           </div>
         )}
         <MiniMap cy={cy} />
