@@ -286,7 +286,11 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     cy.edges().forEach((e) => { const show = filters.visibleEdgeRelations.has(e.data("relation")); e.style("display", show ? "element" : "none"); });
   }, [cy, filters, renderComplete]);
 
-  // Re-apply layout when algorithm, spacing, or grouping changes (debounced for spacing slider)
+  // Re-apply layout when algorithm, spacing, or grouping changes.
+  // Deliberately excludes renderComplete from deps so it does NOT auto-run
+  // on initial render completion — large graphs freeze the browser if layout
+  // runs automatically. Users trigger layout via the "Layout" button or by
+  // changing the algorithm picker.
   useEffect(() => {
     if (!cy || !renderComplete) return;
     const timer = setTimeout(() => {
@@ -295,7 +299,8 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       cy.layout(opts).run();
     }, 300);
     return () => clearTimeout(timer);
-  }, [cy, renderComplete, filters.layoutName, filters.nodeSpacing, filters.groupByFile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cy, filters.layoutName, filters.nodeSpacing, filters.groupByFile]);
 
   useEffect(() => {
     if (!cy || !linkedNodeId) return;
@@ -347,6 +352,13 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
     });
   }, [cy]);
 
+  const handleReLayout = useCallback(() => {
+    if (!cy) return;
+    applyGroupByFile(cy, filters.groupByFile);
+    const opts = buildLayoutOptions(filters.layoutName, filters.nodeSpacing, cy.nodes().length);
+    cy.layout(opts).run();
+  }, [cy, filters.groupByFile, filters.layoutName, filters.nodeSpacing]);
+
   if (isLoading) return <div className="flex-1 flex items-center justify-center text-gray-500 text-sm animate-pulse">Loading graph…</div>;
   if (isError) return <div className="flex-1 flex items-center justify-center text-accent-red text-sm">Failed to load graph.</div>;
 
@@ -362,6 +374,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
         <div className="absolute top-3 left-3 z-10 flex gap-2">
           <button onClick={() => cy?.fit(undefined, 30)} className="btn-ghost text-xs px-3 py-1.5">Fit</button>
           <button onClick={() => cy?.elements().removeClass("blast-radius blast-radius-edge execution-flow faded")} className="btn-ghost text-xs px-3 py-1.5">Clear</button>
+          <button onClick={handleReLayout} disabled={!renderComplete} className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-40">Layout</button>
           <div className="w-48"><SearchBar onSearch={handleSearch} /></div>
         </div>
         <div ref={containerRef} className="flex-1 bg-surface" />
