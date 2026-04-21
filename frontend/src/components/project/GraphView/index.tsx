@@ -22,10 +22,10 @@ const RENDER_STAGES: readonly string[][] = [
 ];
 
 function adaptiveNumIter(nodeCount: number): number {
-  if (nodeCount < 150) return 2500;
-  if (nodeCount < 400) return 1200;
-  if (nodeCount < 800) return 600;
-  return 300;
+  if (nodeCount < 100) return 1500;
+  if (nodeCount < 300) return 800;
+  if (nodeCount < 600) return 350;
+  return 150;
 }
 
 interface Props {
@@ -84,6 +84,7 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
         return;
       }
 
+      const newNodeIds = new Set(newNodes.map(n => n.data.id));
       newNodes.forEach(n => loadedIds.add(n.data.id));
       const newEdges = graphData.edges.filter(
         e => loadedIds.has(e.data.source) && loadedIds.has(e.data.target)
@@ -91,21 +92,31 @@ export default function GraphView({ projectId, linkedNodeId, onNodeSelect }: Pro
       instance.add([...newNodes, ...newEdges]);
       setRenderProgress({ loaded: loadedIds.size, total: graphData.nodes.length });
 
-      const layout = instance.layout({
-        name: "cose-bilkent",
-        animate: false,
-        randomize: stageIndex === 0,
-        idealEdgeLength: 120,
-        nodeRepulsion: 12000,
-        nodeDimensionsIncludeLabels: true,
-        padding: 60,
-        gravity: 0.15,
-        numIter: adaptiveNumIter(instance.nodes().length),
-        tile: true,
-      } as cytoscape.LayoutOptions);
+      // Yield to the browser so React commits the progress update before the
+      // blocking layout computation starts (prevents UI appearing frozen).
+      setTimeout(() => {
+        const newEles = instance.nodes().filter(n => newNodeIds.has(n.id()));
 
-      layout.on("layoutstop", () => setTimeout(() => runStage(stageIndex + 1), 50));
-      layout.run();
+        // Storage nodes (stage 3) can number in the hundreds and cause multi-second
+        // freezes with cose-bilkent's O(n²) algorithm. Grid layout is O(n) and instant.
+        const layout: cytoscape.Layouts = stageIndex >= 3
+          ? newEles.layout({ name: "grid", animate: false, avoidOverlap: true } as cytoscape.LayoutOptions)
+          : instance.layout({
+              name: "cose-bilkent",
+              animate: false,
+              randomize: stageIndex === 0,
+              idealEdgeLength: 120,
+              nodeRepulsion: 12000,
+              nodeDimensionsIncludeLabels: true,
+              padding: 60,
+              gravity: 0.15,
+              numIter: adaptiveNumIter(instance.nodes().length),
+              tile: true,
+            } as cytoscape.LayoutOptions);
+
+        layout.on("layoutstop", () => setTimeout(() => runStage(stageIndex + 1), 50));
+        layout.run();
+      }, 50);
     };
 
     runStage(0);
