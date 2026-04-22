@@ -130,15 +130,19 @@ The system is designed for a local development workflow where the OS user bounda
 
 | Tool | Description |
 |------|-------------|
-| `get_graph_summary` | Node and edge counts grouped by type |
-| `run_sparql` | Execute a SPARQL SELECT query (capped at 500 rows) |
-| `natural_language_query` | Convert plain-English to SPARQL and execute (requires `ANTHROPIC_API_KEY`) |
+| `get_graph_summary` | Node and edge counts grouped by type for a project |
+| `run_sparql` | Execute a SPARQL SELECT query against a project graph (capped at 500 rows); use the `cg:` prefix for ontology terms |
+| `natural_language_query` | Convert plain-English to SPARQL and execute; returns generated query + results (requires `ANTHROPIC_API_KEY`) |
 
 ### Analysis
 
 | Tool | Description |
 |------|-------------|
-| `get_blast_radius` | All callers (direct + transitive) of a node, with severity |
+| `get_blast_radius` | All callers (direct + transitive) of a node, with severity rating |
+| `get_callers` | Direct callers of a function or method; returns `caller_uri`, `caller_name`, `caller_type`, `qualified_name` |
+| `get_callees` | All functions/methods directly called by a given function; same fields as `get_callers` |
+| `get_class_hierarchy` | Inheritance parents, children, and implemented interfaces of a class |
+| `find_nodes` | Search nodes by name substring, type (`Function`, `Class`, `Method`, etc.), or language; returns up to 50 results |
 
 ## Running
 
